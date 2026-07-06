@@ -35,7 +35,13 @@ class BaseClient:
     # ------------------------------------------------------------------
 
     def _list_records(self, table_id: str, page_size: int = 200) -> list[dict]:
-        """Fetch all records from a table using offset-based pagination."""
+        """Fetch all records from a table using offset-based pagination.
+
+        lark-cli +record-list --format json returns a columnar envelope:
+            {"data": {"field_id_list": [...], "record_id_list": [...],
+                      "data": [[row0_vals...], ...], "has_more": bool}}
+        This method reconstructs the standard {record_id, fields} shape.
+        """
         records: list[dict] = []
         offset = 0
         while True:
@@ -50,19 +56,32 @@ class BaseClient:
                 "--offset", str(offset),
             ]
             data = _run(cmd)
-            # lark-cli JSON envelope: {"code":0,"data":{"items":[...],"has_more":bool,...}}
-            items = []
+            items: list[dict] = []
             has_more = False
             if isinstance(data, dict):
                 inner = data.get("data", data)
-                raw_items = inner.get("items", inner if isinstance(inner, list) else [])
                 has_more = bool(inner.get("has_more", False))
-                for item in raw_items:
-                    record_id = item.get("record_id", "")
-                    fields = item.get("fields", {})
-                    items.append({"record_id": record_id, "fields": fields})
+                if isinstance(inner, dict) and "field_id_list" in inner:
+                    # Columnar format (current lark-cli)
+                    field_ids  = inner.get("field_id_list", [])
+                    record_ids = inner.get("record_id_list", [])
+                    rows       = inner.get("data", [])
+                    for i, row in enumerate(rows):
+                        rec_id = record_ids[i] if i < len(record_ids) else ""
+                        fields = {
+                            field_ids[j]: row[j]
+                            for j in range(min(len(field_ids), len(row)))
+                            if row[j] is not None
+                        }
+                        items.append({"record_id": rec_id, "fields": fields})
+                else:
+                    # Legacy items format (fallback)
+                    raw_items = inner.get("items", inner if isinstance(inner, list) else [])
+                    for item in raw_items:
+                        record_id = item.get("record_id", "")
+                        fields = item.get("fields", {})
+                        items.append({"record_id": record_id, "fields": fields})
             elif isinstance(data, list):
-                # Flat list response (no envelope)
                 for item in data:
                     record_id = item.get("record_id", "")
                     fields = item.get("fields", {})
