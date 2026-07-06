@@ -13,7 +13,7 @@ from handlers.reminder import handle_deadline_reminders
 from handlers.presentation import handle_post_presentation
 from handlers.stage import handle_stage_advance
 from handlers.feedback import handle_feedback_dispatch, run_calibration
-from handlers.employee import run_employee_updates
+from handlers.employee import run_employee_updates, run_calibration_from_actuals
 from webhook import create_app
 import config
 
@@ -44,7 +44,10 @@ def poll_job(poller: Poller) -> None:
         jobs = poller.base.list_active_jobs()
         roster = poller.base.get_roster()
         run_employee_updates(jobs, roster, poller.base, poller.employees)
-        # Calibration run if threshold met
+        # Role Bobot calibration from any newly completed jobs with actual hours
+        all_jobs = poller.base._list_records(config.DAPUR_TABLE)
+        run_calibration_from_actuals(all_jobs, poller.base)
+        # Speed Index calibration run if feedback threshold met
         run_calibration(poller.base)
     except Exception as e:
         log.error(f"Poll failed: {e}", exc_info=True)

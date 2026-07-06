@@ -6,20 +6,29 @@ from handlers.brief import ASSIGNMENT_FIELDS, _get_text
 
 log = logging.getLogger(__name__)
 
+# Fallback average hours when Role Bobot has no entry for a combination
+_FALLBACK_HOURS = 4.0
 
-def build_person_job_map(active_jobs: list[dict], roster: list[dict]) -> dict[str, list[dict]]:
+
+def build_person_job_map(
+    active_jobs: list[dict],
+    roster: list[dict],
+    role_bobot: dict | None = None,
+) -> dict[str, list[dict]]:
     """Return {roster_record_id: [job_summary_dicts]} for each assigned person.
 
-    Each job_summary includes estimated_hours so the caller can compute
-    per-person load (sum of hours across all active assigned jobs).
+    Each job_summary includes role_hours — the expected contribution for
+    that person's role on this specific job type, looked up from Role Bobot.
+    Falls back to estimated_hours / num_assigned if no bobot entry found.
     """
     roster_ids = {r["record_id"] for r in roster}
     person_map: dict[str, list[dict]] = {r["record_id"]: [] for r in roster}
+    role_bobot = role_bobot or {}
 
     for job in active_jobs:
         fields = job["fields"]
-        title = _get_text(fields.get(config.F_JOB_TITLE))
-        stage = fields.get(config.F_STAGE_STATUS) or ""
+        title    = _get_text(fields.get(config.F_JOB_TITLE))
+        stage    = fields.get(config.F_STAGE_STATUS) or ""
         if isinstance(stage, list):
             stage = stage[0].get("text", "") if stage else ""
         next_date = fields.get(config.F_NEXT_MILESTONE) or ""
@@ -28,26 +37,48 @@ def build_person_job_map(active_jobs: list[dict], roster: list[dict]) -> dict[st
             next_date = datetime.fromtimestamp(next_date / 1000).strftime("%Y-%m-%d") if next_date > 1e10 else str(int(next_date))
         next_date = str(next_date)[:10] if next_date else ""
 
+        job_type = fields.get(config.F_JOB_TITLE)  # we use Job Type field
+        # Correct: Job Type is a separate field
+        job_type_raw = fields.get("fldoGTF6g5")  # F_JOB_TYPE field ID in DAPUR
+        job_type = job_type_raw if isinstance(job_type_raw, str) else ""
+
         est_hours = fields.get(config.F_ESTIMATED_HOURS)
         try:
             est_hours = float(est_hours) if est_hours is not None else 0.0
         except (TypeError, ValueError):
             est_hours = 0.0
 
-        job_summary = {
-            "title": title,
-            "stage": stage,
-            "next_date": next_date,
-            "estimated_hours": est_hours,
-        }
+        # Count total assigned people on this job for fallback division
+        total_assigned = sum(
+            len([i for i in (fields.get(fld) or []) if isinstance(i, dict)])
+            for fld in ASSIGNMENT_FIELDS
+        )
 
         for fld in ASSIGNMENT_FIELDS:
+            discipline = config.ASSIGNMENT_FIELD_TO_DISCIPLINE.get(fld, "")
             linked = fields.get(fld) or []
             if isinstance(linked, list):
                 for item in linked:
                     rec_id = item.get("id") if isinstance(item, dict) else None
-                    if rec_id and rec_id in roster_ids:
-                        person_map[rec_id].append(job_summary)
+                    if not rec_id or rec_id not in roster_ids:
+                        continue
+
+                    # Role-specific hours from Bobot
+                    role_hours = role_bobot.get((job_type, discipline))
+                    if role_hours is None:
+                        # Fallback: split estimated hours equally
+                        role_hours = (est_hours / total_assigned) if total_assigned else _FALLBACK_HOURS
+
+                    job_summary = {
+                        "title": title,
+                        "stage": stage,
+                        "next_date": next_date,
+                        "estimated_hours": est_hours,  # total job estimate
+                        "role_hours": round(float(role_hours), 1),  # this person's contribution
+                        "job_type": job_type,
+                        "discipline": discipline,
+                    }
+                    person_map[rec_id].append(job_summary)
 
     return person_map
 
@@ -67,13 +98,55 @@ def format_current_jobs(jobs: list[dict]) -> str:
     return " · ".join(parts)
 
 
+def run_calibration_from_actuals(active_jobs: list[dict], base) -> None:
+    """When a DONE job has Actual Hours, calibrate Role Bobot for each role involved.
+
+    Distribution: actual hours split proportionally across assigned roles using
+    current Role Bobot weights. Each role's observed hours updates its Bobot entry
+    via EMA (α=0.3, see BaseClient.calibrate_role_bobot).
+    """
+    role_bobot = base.get_role_bobot()
+    for job in active_jobs:
+        f = job["fields"]
+        if f.get(config.F_ACCOUNT_STATUS) != "DONE":
+            continue
+        actual = f.get(config.F_ACTUAL_HOURS)
+        try:
+            actual = float(actual) if actual is not None else 0.0
+        except (TypeError, ValueError):
+            actual = 0.0
+        if actual <= 0:
+            continue
+        job_type = f.get("fldoGTF6g5", "")
+        if not job_type:
+            continue
+
+        # Find all assigned disciplines on this job
+        assigned = []
+        for fld, discipline in config.ASSIGNMENT_FIELD_TO_DISCIPLINE.items():
+            linked = f.get(fld) or []
+            if isinstance(linked, list) and any(isinstance(i, dict) for i in linked):
+                assigned.append(discipline)
+
+        if not assigned:
+            continue
+
+        # Distribute actual hours proportionally using current Bobot weights
+        total_bobot = sum(role_bobot.get((job_type, d), _FALLBACK_HOURS) for d in assigned)
+        for discipline in assigned:
+            weight = role_bobot.get((job_type, discipline), _FALLBACK_HOURS)
+            observed = round(actual * (weight / total_bobot) if total_bobot else actual / len(assigned), 1)
+            base.calibrate_role_bobot(job_type, discipline, observed)
+
+
 def run_employee_updates(
     active_jobs: list[dict],
     roster: list[dict],
     base,
     employees_client=None,
 ) -> None:
-    person_map = build_person_job_map(active_jobs, roster)
+    role_bobot = base.get_role_bobot()
+    person_map = build_person_job_map(active_jobs, roster, role_bobot=role_bobot)
     roster_lookup = {r["record_id"]: r for r in roster}
 
     # Build Open ID → Employee record map for cross-base write
@@ -102,10 +175,10 @@ def run_employee_updates(
             current_text = current_text[0].get("text", "") if current_text else ""
         base.update_roster_record(rec_id, config.R_CURRENT_JOBS, new_text, current_value=current_text)
 
-        # ── Hours-based Personal Load Score ─────────────────────────────
-        # Sum Estimated Hours across all active assigned jobs.
-        # Capacity = 8h/day. Available formula: ≤8 🟢, ≤16 🟡, ≤24 🟠, >24 🔴
-        total_hours = round(sum(j["estimated_hours"] for j in jobs), 1)
+        # ── Role-specific Load Score ─────────────────────────────────────
+        # Uses role_hours (from Role Bobot per job type × discipline),
+        # NOT total estimated hours. Capacity = 8h/day.
+        total_hours = round(sum(j["role_hours"] for j in jobs), 1)
         current_load = fields.get(config.R_LOAD_SCORE)
         try:
             current_load = float(current_load) if current_load is not None else None

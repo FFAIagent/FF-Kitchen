@@ -14,7 +14,8 @@ WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 DAPUR_TABLE = "tblpNqjumvstYOnj"
 ROSTER_TABLE = "tblmeLyHTfAWvCm3"
 CHAT_ID_TABLE = "tbl74dnKu2q6o8nQ"
-BOBOT_TABLE = "tblV0tT690HxKQwT"
+BOBOT_TABLE      = "tblV0tT690HxKQwT"
+ROLE_BOBOT_TABLE = "tbl6vvRtr7MXiZvR"
 FEEDBACK_TABLE = "tblqT81eifqSvVqN"
 REVISION_TABLE = "tblJwpd41jumoLk8"
 
@@ -76,6 +77,15 @@ EMPLOYEES_BASE_TOKEN = "SkrkbyaJwa3jxHsn619lG5a7g7f"
 EMPLOYEES_TABLE = "tblNyIHGQb2jh0Iy"
 
 # FF Employees field IDs
+# Role Bobot field IDs
+RB_JOB_TYPE      = "fldQgZFH6p"
+RB_DISCIPLINE    = "flddOyrvPH"
+RB_BASE_HOURS    = "fldXcbCf2T"
+RB_SAMPLE_COUNT  = "fldYO2fYNX"
+RB_CONFIDENCE    = "fldAuAfAch"
+RB_LAST_CAL      = "fldPGv5ePz"
+RB_REASONING     = "fldhsZJzCN"
+
 E_NAME             = "fldvCb5Ttp"
 E_OPEN_ID          = "fldiR5gXWt"
 E_CURRENT_PROJECTS = "fldGU5CHbk"
@@ -120,6 +130,16 @@ MILESTONE_REMINDERS = {
     "1st Internal Review": (F_FIRST_REVIEW_DATE, F_FIRST_REVIEW_REMINDER),
     "Client Presentation": (F_CLIENT_PRES_DATE, F_CLIENT_PRES_REMINDER),
     "2nd Internal Review": (F_SECOND_REVIEW_DATE, F_SECOND_REVIEW_REMINDER),
+}
+
+# Maps DAPUR assignment field ID → Discipline name (for Role Bobot lookup)
+ASSIGNMENT_FIELD_TO_DISCIPLINE = {
+    F_ART_ASSIGNED:      "Art",
+    F_COPY_ASSIGNED:     "Copy",
+    F_GD_ASSIGNED:       "GD",
+    F_MOTION_ASSIGNED:   "Motion",
+    F_STRATEGY_ASSIGNED: "Strategy",
+    F_FA_ASSIGNED:       "FA Artist",
 }
 
 # Complexity multipliers by Job Type
