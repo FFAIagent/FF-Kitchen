@@ -61,5 +61,7 @@ def mock_base_client():
         return client._patch_record("tblpNqjumvstYOnj", rec_id, fields)
 
     client.update_record = _update_record
+    client.update_last_sync = MagicMock(return_value=True)
+    client.get_chat_ids = MagicMock(return_value={})
 
     return client
