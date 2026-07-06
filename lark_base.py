@@ -63,13 +63,21 @@ class BaseClient:
                 has_more = bool(inner.get("has_more", False))
                 if isinstance(inner, dict) and "field_id_list" in inner:
                     # Columnar format (current lark-cli)
+                    # Single-select values come back as ["option"] — unwrap to "option"
+                    # so handler comparisons (== "Approved", == "DONE") work unchanged.
+                    # Lists of dicts (link/user fields) and multi-element lists are kept as-is.
+                    def _unwrap(v):
+                        if isinstance(v, list) and len(v) == 1 and isinstance(v[0], str):
+                            return v[0]
+                        return v
+
                     field_ids  = inner.get("field_id_list", [])
                     record_ids = inner.get("record_id_list", [])
                     rows       = inner.get("data", [])
                     for i, row in enumerate(rows):
                         rec_id = record_ids[i] if i < len(record_ids) else ""
                         fields = {
-                            field_ids[j]: row[j]
+                            field_ids[j]: _unwrap(row[j])
                             for j in range(min(len(field_ids), len(row)))
                             if row[j] is not None
                         }
