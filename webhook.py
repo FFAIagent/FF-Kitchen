@@ -25,12 +25,15 @@ def create_app(base, im) -> Flask:
     @app.route("/action", methods=["GET"])
     def action():
         action_name = request.args.get("action", "")
-        record_id = request.args.get("record_id", "")
-        stage = request.args.get("stage", "")
-        job = request.args.get("job", "")
-        person = request.args.get("person", "")
+        record_id   = request.args.get("record_id", "")
+        stage       = request.args.get("stage", "")
+        job         = request.args.get("job", "")
+        person      = request.args.get("person", "")
+        discipline  = request.args.get("discipline", "")
+        hours       = request.args.get("hours", "")
         try:
             _handle_action(action_name, record_id, stage, job, person,
+                           discipline, hours,
                            current_app.base, current_app.im)
         except Exception as e:
             log.error(f"Action error [{action_name}]: {e}", exc_info=True)
@@ -40,6 +43,7 @@ def create_app(base, im) -> Flask:
 
 
 def _handle_action(action: str, record_id: str, stage: str, job: str, person: str,
+                   discipline: str, hours: str,
                    base, im) -> None:
     if action == "got_it":
         log.info(f"Got it on record {record_id}")
@@ -72,6 +76,12 @@ def _handle_action(action: str, record_id: str, stage: str, job: str, person: st
     elif action == "feedback_skip":
         log.info(f"Feedback skipped for {person} on {job}")
 
+    elif action == "log_hours":
+        _action_log_hours(record_id, discipline, hours, base)
+
+    elif action == "log_hours_skip":
+        log.info(f"Hours log skipped for {record_id} / {discipline}")
+
     else:
         log.warning(f"Unknown action: {action}")
 
@@ -93,6 +103,37 @@ def _action_request_extension(record_id: str, stage: str, base, im) -> None:
             pm_open_id, "—", job_title, stage or "milestone", "—",
             f"https://fcn.sg.larksuite.com/base/{config.BASE_TOKEN}"
         )
+
+
+def _action_log_hours(record_id: str, discipline: str, hours_str: str, base) -> None:
+    """Write per-role actual hours to DAPUR and trigger Role Bobot calibration."""
+    try:
+        hours = float(hours_str)
+    except (ValueError, TypeError):
+        log.error(f"log_hours: invalid hours value '{hours_str}'")
+        return
+
+    hours_field, _ = config.DISCIPLINE_HOURS_FIELDS.get(discipline, (None, None))
+    if not hours_field:
+        log.error(f"log_hours: unknown discipline '{discipline}'")
+        return
+
+    # Write actual hours to DAPUR
+    base.update_record(record_id, {hours_field: hours})
+    log.info(f"Actual hours logged: {discipline} = {hours}h on {record_id}")
+
+    # Trigger Role Bobot calibration for this discipline
+    # Need job_type — fetch from DAPUR record
+    try:
+        all_records = base._list_records(config.DAPUR_TABLE)
+        job = next((r for r in all_records if r["record_id"] == record_id), None)
+        if job:
+            job_type = job["fields"].get("fldoGTF6g5", "")
+            if job_type and hours > 0:
+                base.calibrate_role_bobot(job_type, discipline, hours)
+                log.info(f"Role Bobot calibrated: {job_type} × {discipline} = {hours}h")
+    except Exception as e:
+        log.error(f"Role Bobot calibration failed after log_hours: {e}")
 
 
 if __name__ == "__main__":

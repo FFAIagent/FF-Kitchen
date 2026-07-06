@@ -14,6 +14,7 @@ from handlers.presentation import handle_post_presentation
 from handlers.stage import handle_stage_advance
 from handlers.feedback import handle_feedback_dispatch, run_calibration
 from handlers.employee import run_employee_updates, run_calibration_from_actuals
+from handlers.hours import handle_hours_collection
 from webhook import create_app
 import config
 
@@ -72,6 +73,7 @@ def main() -> None:
     poller.register(handle_post_presentation)
     poller.register(handle_stage_advance)
     poller.register(handle_feedback_dispatch)
+    poller.register(handle_hours_collection)
 
     # Start Flask webhook in a background daemon thread
     webhook_thread = threading.Thread(

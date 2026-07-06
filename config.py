@@ -55,6 +55,32 @@ F_JOB_TITLE = "fld6elh0J7"
 F_CLIENT_LINK = "fld7MDHHJN"
 F_BRIEF_LINK = "fldHwV7ihE"
 
+# Per-role actual hours (agent writes when person reports via DM card)
+F_ACTUAL_HOURS_ART      = "fldi1bk0Ho"
+F_ACTUAL_HOURS_COPY     = "fldU3iD1Ot"
+F_ACTUAL_HOURS_GD       = "fldR2bRm2T"
+F_ACTUAL_HOURS_MOTION   = "fldaB9xREh"
+F_ACTUAL_HOURS_STRATEGY = "flducMfZU7"
+F_ACTUAL_HOURS_FA       = "fldURgIsWt"
+
+# Dedup flags — agent sets True after sending the DM hours request
+F_HOURS_REQUESTED_ART      = "fld0XTTJ28"
+F_HOURS_REQUESTED_COPY     = "fld8bHSZag"
+F_HOURS_REQUESTED_GD       = "flddX3V6xc"
+F_HOURS_REQUESTED_MOTION   = "fldlEeAgkL"
+F_HOURS_REQUESTED_STRATEGY = "fldRuiWJeM"
+F_HOURS_REQUESTED_FA       = "fldTGPONZH"
+
+# Maps discipline name → (actual_hours_field_id, hours_requested_flag_id)
+DISCIPLINE_HOURS_FIELDS = {
+    "Art":      (F_ACTUAL_HOURS_ART,      F_HOURS_REQUESTED_ART),
+    "Copy":     (F_ACTUAL_HOURS_COPY,     F_HOURS_REQUESTED_COPY),
+    "GD":       (F_ACTUAL_HOURS_GD,       F_HOURS_REQUESTED_GD),
+    "Motion":   (F_ACTUAL_HOURS_MOTION,   F_HOURS_REQUESTED_MOTION),
+    "Strategy": (F_ACTUAL_HOURS_STRATEGY, F_HOURS_REQUESTED_STRATEGY),
+    "FA Artist":(F_ACTUAL_HOURS_FA,       F_HOURS_REQUESTED_FA),
+}
+
 # Team Roster field IDs
 R_NAME = "fldLy0sa0j"
 R_DISCIPLINE = "fld0eDLpb8"

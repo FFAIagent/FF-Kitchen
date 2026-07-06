@@ -236,6 +236,78 @@ class IMClient:
         }
         return self._send_card(open_id, card)
 
+    def send_hours_card(
+        self,
+        open_id: str,
+        job_title: str,
+        discipline: str,
+        record_id: str,
+    ) -> dict:
+        """Ask a team member how many hours they spent on a completed job.
+
+        Sends a card with hour-bucket buttons. Each button POSTs back to the
+        webhook with action=log_hours, record_id, discipline, and hours.
+        """
+        rec_enc = urllib.parse.quote(record_id)
+        dis_enc = urllib.parse.quote(discipline)
+
+        def _h_btn(label: str, hours: str) -> dict:
+            return self._button(
+                label,
+                _action_url({
+                    "action": "log_hours",
+                    "record_id": rec_enc,
+                    "discipline": dis_enc,
+                    "hours": hours,
+                }),
+                "default",
+            )
+
+        card = {
+            "config": {"wide_screen_mode": True},
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {
+                        "content": (
+                            f"**Hours Log Request**\n\n"
+                            f"Job: **{job_title}**\n"
+                            f"Role: **{discipline}**\n\n"
+                            f"How many hours did you spend on this job in total?"
+                        ),
+                        "tag": "lark_md",
+                    },
+                },
+                {
+                    "actions": [
+                        _h_btn("1h",  "1"),
+                        _h_btn("2h",  "2"),
+                        _h_btn("4h",  "4"),
+                        _h_btn("6h",  "6"),
+                        _h_btn("8h",  "8"),
+                        _h_btn("10h", "10"),
+                    ],
+                    "tag": "action",
+                },
+                {
+                    "actions": [
+                        _h_btn("12h", "12"),
+                        _h_btn("16h", "16"),
+                        _h_btn("20h", "20"),
+                        _h_btn("24h", "24"),
+                        _h_btn("32h", "32"),
+                        self._button(
+                            "Skip",
+                            _action_url({"action": "log_hours_skip"}),
+                            "default",
+                        ),
+                    ],
+                    "tag": "action",
+                },
+            ],
+        }
+        return self._send_card(open_id, card)
+
     def send_pm_extension_alert(
         self,
         pm_open_id: str,
