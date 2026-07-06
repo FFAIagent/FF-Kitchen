@@ -8,7 +8,11 @@ log = logging.getLogger(__name__)
 
 
 def build_person_job_map(active_jobs: list[dict], roster: list[dict]) -> dict[str, list[dict]]:
-    """Return {roster_record_id: [job_summary_dicts]} for each assigned person."""
+    """Return {roster_record_id: [job_summary_dicts]} for each assigned person.
+
+    Each job_summary includes estimated_hours so the caller can compute
+    per-person load (sum of hours across all active assigned jobs).
+    """
     roster_ids = {r["record_id"] for r in roster}
     person_map: dict[str, list[dict]] = {r["record_id"]: [] for r in roster}
 
@@ -24,7 +28,18 @@ def build_person_job_map(active_jobs: list[dict], roster: list[dict]) -> dict[st
             next_date = datetime.fromtimestamp(next_date / 1000).strftime("%Y-%m-%d") if next_date > 1e10 else str(int(next_date))
         next_date = str(next_date)[:10] if next_date else ""
 
-        job_summary = {"title": title, "stage": stage, "next_date": next_date}
+        est_hours = fields.get(config.F_ESTIMATED_HOURS)
+        try:
+            est_hours = float(est_hours) if est_hours is not None else 0.0
+        except (TypeError, ValueError):
+            est_hours = 0.0
+
+        job_summary = {
+            "title": title,
+            "stage": stage,
+            "next_date": next_date,
+            "estimated_hours": est_hours,
+        }
 
         for fld in ASSIGNMENT_FIELDS:
             linked = fields.get(fld) or []
@@ -87,6 +102,18 @@ def run_employee_updates(
             current_text = current_text[0].get("text", "") if current_text else ""
         base.update_roster_record(rec_id, config.R_CURRENT_JOBS, new_text, current_value=current_text)
 
+        # ── Hours-based Personal Load Score ─────────────────────────────
+        # Sum Estimated Hours across all active assigned jobs.
+        # Capacity = 8h/day. Available formula: ≤8 🟢, ≤16 🟡, ≤24 🟠, >24 🔴
+        total_hours = round(sum(j["estimated_hours"] for j in jobs), 1)
+        current_load = fields.get(config.R_LOAD_SCORE)
+        try:
+            current_load = float(current_load) if current_load is not None else None
+        except (TypeError, ValueError):
+            current_load = None
+        if current_load != total_hours:
+            base.update_roster_record(rec_id, config.R_LOAD_SCORE, total_hours)
+
         if jobs:
             dates = [j["next_date"] for j in jobs if j["next_date"]]
             earliest = min(dates) if dates else None
@@ -108,6 +135,7 @@ def run_employee_updates(
                     record_id=emp["record_id"],
                     current_projects=new_text,
                     active_jobs_count=len(jobs),
+                    load_score=total_hours,
                     last_updated=now_wib,
                     current_projects_val=current_proj,
                 )

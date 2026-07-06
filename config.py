@@ -6,8 +6,7 @@ load_dotenv()
 LARK_APP_ID = os.environ.get("LARK_APP_ID", "")
 LARK_APP_SECRET = os.environ.get("LARK_APP_SECRET", "")
 BASE_TOKEN = os.environ.get("BASE_TOKEN", "HH0qb3myka5wPmsyInGlH6l3grd")
-ECD_OPEN_IDS = [x.strip() for x in os.environ.get("ECD_OPEN_IDS", "").split(",") if x.strip()]
-ECD_OPEN_ID = ECD_OPEN_IDS[0] if ECD_OPEN_IDS else ""  # backwards compat
+ECD_OPEN_ID = os.environ.get("ECD_OPEN_ID", "")
 WEBHOOK_PORT = int(os.environ.get("WEBHOOK_PORT", "5001"))
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 
@@ -60,7 +59,7 @@ R_NAME = "fldLy0sa0j"
 R_DISCIPLINE = "fld0eDLpb8"
 R_ROLE = "fldVQkaiOa"
 R_OPEN_ID = "fldFrxViIu"
-R_LOAD_SCORE = "fldicOdUnJ"
+R_LOAD_SCORE = "fldlKvk26j"   # was fldicOdUnJ (formula); now agent-written number (hours)
 R_AVAILABLE = "fld6WLvIHk"
 R_CURRENT_JOBS = "fldRbrkboh"
 R_NEXT_DEADLINE = "fldaAvILjb"
@@ -81,6 +80,7 @@ E_NAME             = "fldvCb5Ttp"
 E_OPEN_ID          = "fldiR5gXWt"
 E_CURRENT_PROJECTS = "fldGU5CHbk"
 E_ACTIVE_JOBS      = "fldCAAIm3o"
+E_LOAD_SCORE       = "fldoicLIgp"   # hours — sum of Estimated Hours across active jobs
 E_LAST_UPDATED     = "fldYwLot0z"
 
 # Polling

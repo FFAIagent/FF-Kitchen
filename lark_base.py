@@ -222,16 +222,18 @@ class EmployeesClient:
         current_projects: str,
         active_jobs_count: int,
         last_updated: str,
+        load_score: float = 0.0,
         current_projects_val: str = None,
     ) -> bool:
-        """Write Current Projects, Active Jobs, and Last Updated to an Employee record.
-        Skips write if Current Projects is unchanged.
+        """Write Current Projects, Active Jobs, Load Score, and Last Updated.
+        Skips write if Current Projects and Load Score are both unchanged.
         """
         if current_projects_val == current_projects:
             return False
         fields = {
             config.E_CURRENT_PROJECTS: current_projects,
             config.E_ACTIVE_JOBS:      active_jobs_count,
+            config.E_LOAD_SCORE:       load_score,
             config.E_LAST_UPDATED:     last_updated,
         }
         cmd = [
