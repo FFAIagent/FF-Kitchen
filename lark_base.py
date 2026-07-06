@@ -194,3 +194,53 @@ class BaseClient:
     def list_feedback_records(self) -> list[dict]:
         """Return all Feedback Log records."""
         return self._list_records(config.FEEDBACK_TABLE)
+
+
+class EmployeesClient:
+    """Client for the FF Employees base (Flock People System).
+
+    Separate base token from FF Kitchen — used to mirror Current Projects
+    and Active Jobs count into the employee directory.
+    """
+
+    def __init__(self) -> None:
+        self.base_token = config.EMPLOYEES_BASE_TOKEN
+
+    def _run_cmd(self, cmd: list[str]) -> dict:
+        return _run(cmd)
+
+    def get_employees(self) -> list[dict]:
+        """Return all FF Employees records (uses BaseClient._list_records logic)."""
+        # Reuse the same columnar-aware pagination via a throwaway BaseClient-like call
+        tmp = BaseClient.__new__(BaseClient)
+        tmp.base_token = self.base_token
+        return tmp._list_records(config.EMPLOYEES_TABLE)
+
+    def update_employee(
+        self,
+        record_id: str,
+        current_projects: str,
+        active_jobs_count: int,
+        last_updated: str,
+        current_projects_val: str = None,
+    ) -> bool:
+        """Write Current Projects, Active Jobs, and Last Updated to an Employee record.
+        Skips write if Current Projects is unchanged.
+        """
+        if current_projects_val == current_projects:
+            return False
+        fields = {
+            config.E_CURRENT_PROJECTS: current_projects,
+            config.E_ACTIVE_JOBS:      active_jobs_count,
+            config.E_LAST_UPDATED:     last_updated,
+        }
+        cmd = [
+            "lark-cli", "base", "+record-upsert",
+            "--base-token", self.base_token,
+            "--table-id",   config.EMPLOYEES_TABLE,
+            "--record-id",  record_id,
+            "--as", "user",
+            "--json", json.dumps(fields, ensure_ascii=False),
+        ]
+        _run(cmd)
+        return True

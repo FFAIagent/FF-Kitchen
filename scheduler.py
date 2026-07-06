@@ -5,7 +5,7 @@ import threading
 from datetime import datetime
 import pytz
 from apscheduler.schedulers.blocking import BlockingScheduler
-from lark_base import BaseClient
+from lark_base import BaseClient, EmployeesClient
 from lark_im import IMClient
 from poller import Poller
 from handlers.brief import handle_brief_announced
@@ -43,7 +43,7 @@ def poll_job(poller: Poller) -> None:
         # Batch employee card update after all jobs processed
         jobs = poller.base.list_active_jobs()
         roster = poller.base.get_roster()
-        run_employee_updates(jobs, roster, poller.base)
+        run_employee_updates(jobs, roster, poller.base, poller.employees)
         # Calibration run if threshold met
         run_calibration(poller.base)
     except Exception as e:
@@ -58,10 +58,12 @@ def start_webhook(base: BaseClient, im: IMClient) -> None:
 def main() -> None:
     base = BaseClient()
     im = IMClient()
+    employees = EmployeesClient()
 
     poller = Poller()
     poller.base = base
     poller.im = im
+    poller.employees = employees
     poller.register(handle_brief_announced)
     poller.register(handle_deadline_reminders)
     poller.register(handle_post_presentation)

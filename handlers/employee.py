@@ -52,9 +52,28 @@ def format_current_jobs(jobs: list[dict]) -> str:
     return " · ".join(parts)
 
 
-def run_employee_updates(active_jobs: list[dict], roster: list[dict], base) -> None:
+def run_employee_updates(
+    active_jobs: list[dict],
+    roster: list[dict],
+    base,
+    employees_client=None,
+) -> None:
     person_map = build_person_job_map(active_jobs, roster)
     roster_lookup = {r["record_id"]: r for r in roster}
+
+    # Build Open ID → Employee record map for cross-base write
+    emp_by_open_id: dict[str, dict] = {}
+    if employees_client is not None:
+        for emp in employees_client.get_employees():
+            oid = emp["fields"].get(config.E_OPEN_ID, "")
+            if isinstance(oid, list):
+                oid = oid[0] if oid else ""
+            if oid:
+                emp_by_open_id[str(oid)] = emp
+
+    from datetime import datetime
+    import pytz
+    now_wib = datetime.now(pytz.timezone(config.TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
 
     for rec_id, jobs in person_map.items():
         person = roster_lookup.get(rec_id, {})
@@ -75,6 +94,23 @@ def run_employee_updates(active_jobs: list[dict], roster: list[dict], base) -> N
             if isinstance(current_deadline, (int, float)):
                 current_deadline = ""
             base.update_roster_record(rec_id, config.R_NEXT_DEADLINE, earliest, current_value=current_deadline)
+
+        # ── Mirror to FF Employees base ───────────────────────────────────
+        if employees_client is not None:
+            open_id = fields.get(config.R_OPEN_ID, "")
+            if isinstance(open_id, list):
+                open_id = open_id[0] if open_id else ""
+            emp = emp_by_open_id.get(str(open_id)) if open_id else None
+            if emp:
+                emp_fields = emp.get("fields", {})
+                current_proj = emp_fields.get(config.E_CURRENT_PROJECTS) or ""
+                employees_client.update_employee(
+                    record_id=emp["record_id"],
+                    current_projects=new_text,
+                    active_jobs_count=len(jobs),
+                    last_updated=now_wib,
+                    current_projects_val=current_proj,
+                )
 
 
 def handle_employee_update(job: dict, base, roster: list, **_) -> None:

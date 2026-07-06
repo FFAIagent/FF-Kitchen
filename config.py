@@ -72,6 +72,17 @@ R_SPEED_TREND = "flds0X9F37"
 C_CHAT_ID = "fldIZIhz9f"
 C_TEAM_NAME = "fld2YQOPp6"
 
+# FF Employees base (Flock People System — separate base)
+EMPLOYEES_BASE_TOKEN = "SkrkbyaJwa3jxHsn619lG5a7g7f"
+EMPLOYEES_TABLE = "tblNyIHGQb2jh0Iy"
+
+# FF Employees field IDs
+E_NAME             = "fldvCb5Ttp"
+E_OPEN_ID          = "fldiR5gXWt"
+E_CURRENT_PROJECTS = "fldGU5CHbk"
+E_ACTIVE_JOBS      = "fldCAAIm3o"
+E_LAST_UPDATED     = "fldYwLot0z"
+
 # Polling
 POLLING_INTERVAL_MINUTES = 30
 POLL_START_HOUR = 8   # 08:00 WIB
