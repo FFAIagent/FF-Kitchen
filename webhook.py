@@ -17,10 +17,11 @@ h2{{color:#00b388}}p{{color:#555}}</style></head>
 </html>"""
 
 
-def create_app(base, im) -> Flask:
+def create_app(base, im, employees=None) -> Flask:
     app = Flask(__name__)
     app.base = base
     app.im = im
+    app.employees = employees
 
     @app.route("/action", methods=["GET"])
     def action():
@@ -31,10 +32,11 @@ def create_app(base, im) -> Flask:
         person      = request.args.get("person", "")
         discipline  = request.args.get("discipline", "")
         hours       = request.args.get("hours", "")
+        open_id     = request.args.get("open_id", "")
         try:
             _handle_action(action_name, record_id, stage, job, person,
-                           discipline, hours,
-                           current_app.base, current_app.im)
+                           discipline, hours, open_id,
+                           current_app.base, current_app.im, current_app.employees)
         except Exception as e:
             log.error(f"Action error [{action_name}]: {e}", exc_info=True)
         return _HTML_DONE, 200
@@ -43,8 +45,8 @@ def create_app(base, im) -> Flask:
 
 
 def _handle_action(action: str, record_id: str, stage: str, job: str, person: str,
-                   discipline: str, hours: str,
-                   base, im) -> None:
+                   discipline: str, hours: str, open_id: str,
+                   base, im, employees=None) -> None:
     if action == "got_it":
         log.info(f"Got it on record {record_id}")
 
@@ -56,7 +58,7 @@ def _handle_action(action: str, record_id: str, stage: str, job: str, person: st
         log.info(f"Presentation approved for {record_id}, stage set to Production")
 
     elif action == "pres_revision":
-        log.info(f"Presentation revision for {record_id}")
+        _action_pres_revision(record_id, base, im)
 
     elif action in ("feedback_fast", "feedback_normal", "feedback_slow"):
         rating_map = {
@@ -82,8 +84,75 @@ def _handle_action(action: str, record_id: str, stage: str, job: str, person: st
     elif action == "log_hours_skip":
         log.info(f"Hours log skipped for {record_id} / {discipline}")
 
+    elif action == "log_daily_hours":
+        _action_log_daily_hours(record_id, discipline, hours, open_id, base, employees)
+
     else:
         log.warning(f"Unknown action: {action}")
+
+
+def _action_pres_revision(record_id: str, base, im) -> None:
+    """Handle 'Needs Revision' click on post-presentation card.
+
+    1. Increment Revision Count on the DAPUR job.
+    2. Set Stage Status = Client Revision Received.
+    3. DM Account PIC with a card linking to the Revision Form.
+    """
+    from handlers.brief import _get_text
+
+    # Fetch job — check active first, then all records as fallback
+    jobs = base.list_active_jobs()
+    job = next((j for j in jobs if j["record_id"] == record_id), None)
+    if not job:
+        log.warning(
+            f"pres_revision: {record_id} not in active jobs — trying full table"
+        )
+        all_records = base._list_records(config.DAPUR_TABLE)
+        job = next((r for r in all_records if r["record_id"] == record_id), None)
+    if not job:
+        log.error(f"pres_revision: record {record_id} not found")
+        return
+
+    fields = job["fields"]
+    job_title = _get_text(fields.get(config.F_JOB_TITLE)) or record_id
+
+    # Increment revision count
+    current = fields.get(config.F_REVISION_COUNT) or 0
+    if isinstance(current, float):
+        current = int(current)
+    new_count = current + 1
+
+    # Write: stage + revision count
+    base.update_record(record_id, {
+        config.F_STAGE_STATUS: config.STAGE_CLIENT_REVISION,
+        config.F_REVISION_COUNT: new_count,
+    })
+    log.info(
+        f"pres_revision: {record_id} ({job_title}) — "
+        f"stage=Client Revision Received, revision_count={new_count}"
+    )
+
+    # DM Account PIC with revision card
+    account_pic = fields.get(config.F_ACCOUNT_PIC) or []
+    if isinstance(account_pic, list):
+        open_ids = [
+            p.get("id") or p.get("open_id")
+            for p in account_pic
+            if isinstance(p, dict)
+        ]
+    else:
+        open_ids = [str(account_pic)] if account_pic else []
+    open_ids = [oid for oid in open_ids if oid]
+
+    if open_ids:
+        for open_id in open_ids:
+            im.send_client_revision_card(open_id, job_title, new_count, record_id)
+        log.info(f"pres_revision: revision card sent to {open_ids}")
+    else:
+        log.warning(
+            f"pres_revision: no Account PIC on {record_id} — "
+            "stage updated but no DM sent"
+        )
 
 
 def _action_request_extension(record_id: str, stage: str, base, im) -> None:
@@ -106,7 +175,11 @@ def _action_request_extension(record_id: str, stage: str, base, im) -> None:
 
 
 def _action_log_hours(record_id: str, discipline: str, hours_str: str, base) -> None:
-    """Write per-role actual hours to DAPUR and trigger Role Bobot calibration."""
+    """Write per-role actual hours to DAPUR (cumulative) and trigger Role Bobot calibration.
+
+    Changed 2026-07-07: now increments Actual Hours rather than replacing,
+    so daily Timesheet accumulation and end-of-job reporting coexist correctly.
+    """
     try:
         hours = float(hours_str)
     except (ValueError, TypeError):
@@ -118,26 +191,171 @@ def _action_log_hours(record_id: str, discipline: str, hours_str: str, base) -> 
         log.error(f"log_hours: unknown discipline '{discipline}'")
         return
 
-    # Write actual hours to DAPUR
-    base.update_record(record_id, {hours_field: hours})
-    log.info(f"Actual hours logged: {discipline} = {hours}h on {record_id}")
-
-    # Trigger Role Bobot calibration for this discipline
-    # Need job_type — fetch from DAPUR record
+    # Fetch DAPUR record once — needed for current hours + job_type
     try:
         all_records = base._list_records(config.DAPUR_TABLE)
         job = next((r for r in all_records if r["record_id"] == record_id), None)
-        if job:
-            job_type = job["fields"].get("fldoGTF6g5", "")
-            if job_type and hours > 0:
-                base.calibrate_role_bobot(job_type, discipline, hours)
-                log.info(f"Role Bobot calibrated: {job_type} × {discipline} = {hours}h")
     except Exception as e:
-        log.error(f"Role Bobot calibration failed after log_hours: {e}")
+        log.error(f"log_hours: failed to fetch DAPUR record {record_id}: {e}")
+        return
+
+    # Increment (not replace) — DAPUR hours compound daily
+    current_hours = float(job["fields"].get(hours_field) or 0) if job else 0.0
+    new_hours = current_hours + hours
+    base.update_record(record_id, {hours_field: new_hours})
+    log.info(
+        f"Actual hours logged (cumulative): {discipline} "
+        f"{current_hours}+{hours}={new_hours}h on {record_id}"
+    )
+
+    # Role Bobot calibration
+    if job and hours > 0:
+        try:
+            job_type = job["fields"].get("fldoGTF6g5", "")
+            if job_type:
+                base.calibrate_role_bobot(job_type, discipline, new_hours)
+                log.info(f"Role Bobot calibrated: {job_type} × {discipline} = {new_hours}h")
+        except Exception as e:
+            log.error(f"Role Bobot calibration failed after log_hours: {e}")
+
+
+def _action_log_daily_hours(
+    record_id: str,
+    discipline: str,
+    hours_str: str,
+    open_id: str,
+    base,
+    employees,
+) -> None:
+    """Handle daily morning hours check-in response (action=log_daily_hours).
+
+    1. Increment Actual Hours [Discipline] in DAPUR (cumulative)
+    2. Write a Timesheet row for yesterday in FF Employees Base
+    3. Recompute and write Employee weekly/monthly totals + Overloaded flag
+    """
+    from datetime import datetime, timedelta
+    import pytz
+
+    if employees is None:
+        log.error("log_daily_hours: employees client not available")
+        return
+
+    try:
+        hours = float(hours_str)
+    except (ValueError, TypeError):
+        log.error(f"log_daily_hours: invalid hours value '{hours_str}'")
+        return
+
+    hours_field, _ = config.DISCIPLINE_HOURS_FIELDS.get(discipline, (None, None))
+    if not hours_field:
+        log.error(f"log_daily_hours: unknown discipline '{discipline}'")
+        return
+
+    WIB = pytz.timezone(config.TIMEZONE)
+    yesterday = (datetime.now(WIB) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+    # ── 1. Fetch DAPUR job, increment Actual Hours ─────────────────────
+    try:
+        all_records = base._list_records(config.DAPUR_TABLE)
+        job = next((r for r in all_records if r["record_id"] == record_id), None)
+        if not job:
+            log.error(f"log_daily_hours: job {record_id} not found in DAPUR")
+            return
+
+        job_title = job["fields"].get(config.F_JOB_TITLE, "")
+        if isinstance(job_title, list):
+            job_title = job_title[0].get("text", "") if job_title else ""
+
+        current_hours = float(job["fields"].get(hours_field) or 0)
+        new_hours = current_hours + hours
+        base.update_record(record_id, {hours_field: new_hours})
+        log.info(
+            f"log_daily_hours DAPUR update: {discipline} "
+            f"{current_hours}+{hours}={new_hours}h on {record_id}"
+        )
+    except Exception as e:
+        log.error(f"log_daily_hours: failed to update DAPUR: {e}")
+        return
+
+    # Skip Timesheet write + Employee update when 0 hours reported
+    if hours == 0:
+        log.info(f"log_daily_hours: 0h reported — DAPUR updated, Timesheet skipped")
+        return
+
+    # ── 2. Write Timesheet row ─────────────────────────────────────────
+    try:
+        all_employees = employees.get_employees()
+        emp = next(
+            (e for e in all_employees if e["fields"].get(config.E_OPEN_ID) == open_id),
+            None,
+        )
+        if not emp:
+            log.error(f"log_daily_hours: no employee record for open_id={open_id}")
+            return
+        emp_record_id = emp["record_id"]
+
+        employees.create_timesheet_record({
+            config.TS_DATE:       f"{yesterday} 00:00:00",
+            config.TS_PERSON:     [{"record_id": emp_record_id}],
+            config.TS_JOB_TITLE:  job_title,
+            config.TS_JOB_REC_ID: record_id,
+            config.TS_DISCIPLINE: discipline,
+            config.TS_HOURS:      hours,
+        })
+        log.info(f"Timesheet row written: {emp_record_id} / {discipline} / {hours}h on {yesterday}")
+    except Exception as e:
+        log.error(f"log_daily_hours: failed to write Timesheet row: {e}")
+        return
+
+    # ── 3. Recompute Employee weekly/monthly totals ────────────────────
+    try:
+        ts_records = employees._list_timesheet_records()
+        now_wib = datetime.now(WIB)
+        current_week  = now_wib.isocalendar()[1]
+        current_month = now_wib.month
+        current_year  = now_wib.year
+
+        weekly_h  = 0.0
+        monthly_h = 0.0
+
+        for row in ts_records:
+            f = row["fields"]
+            person_links = f.get(config.TS_PERSON, [])
+            is_mine = isinstance(person_links, list) and any(
+                isinstance(p, dict) and p.get("record_id") == emp_record_id
+                for p in person_links
+            )
+            if not is_mine:
+                continue
+
+            row_hours = float(f.get(config.TS_HOURS) or 0)
+            date_val  = f.get(config.TS_DATE)
+            if date_val is None:
+                continue
+
+            if isinstance(date_val, (int, float)):
+                row_dt = datetime.fromtimestamp(date_val / 1000, tz=pytz.utc).astimezone(WIB)
+            else:
+                try:
+                    row_dt = WIB.localize(datetime.strptime(str(date_val)[:10], "%Y-%m-%d"))
+                except Exception:
+                    continue
+
+            if row_dt.year != current_year:
+                continue
+            if row_dt.month == current_month:
+                monthly_h += row_hours
+            if row_dt.isocalendar()[1] == current_week:
+                weekly_h += row_hours
+
+        overloaded = weekly_h > 40
+        employees.update_employee_hours(emp_record_id, weekly_h, monthly_h, overloaded)
+    except Exception as e:
+        log.error(f"log_daily_hours: failed to update Employee totals: {e}")
 
 
 if __name__ == "__main__":
-    from lark_base import BaseClient
+    from lark_base import BaseClient, EmployeesClient
     from lark_im import IMClient
-    app = create_app(BaseClient(), IMClient())
+    app = create_app(BaseClient(), IMClient(), EmployeesClient())
     app.run(host="0.0.0.0", port=config.WEBHOOK_PORT, debug=False, use_reloader=False)

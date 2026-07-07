@@ -308,6 +308,142 @@ class IMClient:
         }
         return self._send_card(open_id, card)
 
+    def send_daily_hours_card(
+        self,
+        open_id: str,
+        job_title: str,
+        discipline: str,
+        record_id: str,
+    ) -> dict:
+        """Ask a team member how many hours they spent on a job yesterday.
+
+        Daily morning check-in (09:00 WIB). Different from send_hours_card which
+        asks for total hours at job completion. Here we ask about yesterday only.
+        Action=log_daily_hours so webhook handles it separately (writes to Timesheet
+        + increments DAPUR Actual Hours + updates Employee weekly/monthly totals).
+        open_id is embedded in the URL so the webhook knows who answered.
+        """
+        rec_enc = urllib.parse.quote(record_id)
+        dis_enc = urllib.parse.quote(discipline)
+        oid_enc = urllib.parse.quote(open_id)
+
+        def _h_btn(label: str, hours: str) -> dict:
+            return self._button(
+                label,
+                _action_url({
+                    "action": "log_daily_hours",
+                    "record_id": rec_enc,
+                    "discipline": dis_enc,
+                    "hours": hours,
+                    "open_id": oid_enc,
+                }),
+                "default",
+            )
+
+        card = {
+            "config": {"wide_screen_mode": True},
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {
+                        "content": (
+                            f"⏱️ **Daily Hours Check-in**\n\n"
+                            f"Job: **{job_title}**\n"
+                            f"Role: **{discipline}**\n\n"
+                            f"Yesterday, how many hours did you spend on this job?"
+                        ),
+                        "tag": "lark_md",
+                    },
+                },
+                {
+                    "actions": [
+                        _h_btn("0.5h", "0.5"),
+                        _h_btn("1h",   "1"),
+                        _h_btn("2h",   "2"),
+                        _h_btn("3h",   "3"),
+                        _h_btn("4h",   "4"),
+                        _h_btn("5h",   "5"),
+                    ],
+                    "tag": "action",
+                },
+                {
+                    "actions": [
+                        _h_btn("6h",  "6"),
+                        _h_btn("7h",  "7"),
+                        _h_btn("8h",  "8"),
+                        _h_btn("10h", "10"),
+                        self._button(
+                            "0 — none",
+                            _action_url({
+                                "action": "log_daily_hours",
+                                "record_id": rec_enc,
+                                "discipline": dis_enc,
+                                "hours": "0",
+                                "open_id": oid_enc,
+                            }),
+                            "default",
+                        ),
+                    ],
+                    "tag": "action",
+                },
+            ],
+        }
+        return self._send_card(open_id, card)
+
+    def send_client_revision_card(
+        self,
+        open_id: str,
+        job_title: str,
+        revision_count: int,
+        record_id: str,
+    ) -> dict:
+        """Send a client revision notification card to Account PIC.
+
+        Fires when Account PIC clicks 'Needs Revision' on the post-presentation
+        card. Includes a direct link to the Revision Form.
+        """
+        REVISION_FORM_URL = (
+            "https://fcn.sg.larksuite.com/share/base/shrlgo316eNoyhDixv1WkN7EdRe"
+        )
+        record_url = (
+            f"https://fcn.sg.larksuite.com/base/{config.BASE_TOKEN}"
+            f"?table={config.DAPUR_TABLE}&record={record_id}"
+        )
+        card = {
+            "config": {"wide_screen_mode": True},
+            "elements": [
+                {
+                    "tag": "div",
+                    "text": {
+                        "content": (
+                            f"**🔄 Client Revision #{revision_count}**\n\n"
+                            f"Job: **{job_title}**\n\n"
+                            f"The client has requested revisions. Please submit the "
+                            f"revision details using the form — the team will be "
+                            f"notified once it's submitted."
+                        ),
+                        "tag": "lark_md",
+                    },
+                },
+                {
+                    "actions": [
+                        self._button(
+                            "📝 Submit Revision Details",
+                            REVISION_FORM_URL,
+                            "primary",
+                        ),
+                        self._button(
+                            "Open Job Record",
+                            record_url,
+                            "default",
+                        ),
+                    ],
+                    "tag": "action",
+                },
+            ],
+        }
+        return self._send_card(open_id, card)
+
     def send_pm_extension_alert(
         self,
         pm_open_id: str,

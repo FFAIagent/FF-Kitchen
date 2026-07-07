@@ -14,7 +14,7 @@ from handlers.presentation import handle_post_presentation
 from handlers.stage import handle_stage_advance
 from handlers.feedback import handle_feedback_dispatch, run_calibration
 from handlers.employee import run_employee_updates, run_calibration_from_actuals
-from handlers.hours import handle_hours_collection
+from handlers.hours import handle_hours_collection, handle_daily_hours_checkin
 from webhook import create_app
 import config
 
@@ -54,8 +54,25 @@ def poll_job(poller: Poller) -> None:
         log.error(f"Poll failed: {e}", exc_info=True)
 
 
-def start_webhook(base: BaseClient, im: IMClient) -> None:
-    app = create_app(base, im)
+def daily_hours_job(base: BaseClient, employees: EmployeesClient, im: IMClient) -> None:
+    """Morning check-in: DM each person for each active job they're assigned to.
+
+    Runs at 09:00 WIB daily. Fetches roster fresh each run so new hires
+    and reassignments are always reflected.
+    Gated by config.DAILY_HOURS_ENABLED — set True to activate.
+    """
+    if not config.DAILY_HOURS_ENABLED:
+        log.info("daily_hours_job: skipped (DAILY_HOURS_ENABLED=False)")
+        return
+    try:
+        roster = base.get_roster()
+        handle_daily_hours_checkin(base=base, employees=employees, im=im, roster=roster)
+    except Exception as e:
+        log.error(f"Daily hours check-in failed: {e}", exc_info=True)
+
+
+def start_webhook(base: BaseClient, im: IMClient, employees: EmployeesClient) -> None:
+    app = create_app(base, im, employees)
     app.run(host="0.0.0.0", port=config.WEBHOOK_PORT, debug=False, use_reloader=False)
 
 
@@ -77,7 +94,7 @@ def main() -> None:
 
     # Start Flask webhook in a background daemon thread
     webhook_thread = threading.Thread(
-        target=start_webhook, args=(base, im), daemon=True
+        target=start_webhook, args=(base, im, employees), daemon=True
     )
     webhook_thread.start()
     log.info(f"Webhook listener started on port {config.WEBHOOK_PORT}")
@@ -90,6 +107,15 @@ def main() -> None:
         minutes=config.POLLING_INTERVAL_MINUTES,
         args=[poller],
         id="ff_kitchen_poll",
+    )
+    # Daily 09:00 WIB — ask each person how many hours they spent yesterday per active job
+    scheduler.add_job(
+        daily_hours_job,
+        "cron",
+        hour=9, minute=0,
+        timezone=WIB,
+        args=[base, employees, im],
+        id="ff_daily_hours",
     )
     log.info("Scheduler starting — FF Kitchen agent running")
     # Run immediately on startup

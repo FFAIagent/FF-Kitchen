@@ -118,6 +118,22 @@ E_CURRENT_PROJECTS = "fldGU5CHbk"
 E_ACTIVE_JOBS      = "fldCAAIm3o"
 E_LOAD_SCORE       = "fldoicLIgp"   # hours — sum of Estimated Hours across active jobs
 E_LAST_UPDATED     = "fldYwLot0z"
+E_WEEKLY_HOURS     = "fld558vxIV"   # agent-written: sum of Timesheet hours this ISO week
+E_MONTHLY_HOURS    = "fld31ku7RX"   # agent-written: sum of Timesheet hours this calendar month
+E_OVERLOADED       = "fldBUSPCvv"   # agent sets True if Weekly Hours > 40
+
+# Timesheet table — FF Employees Base (Step 1, added 2026-07-07)
+TIMESHEET_TABLE = "tbl26FxJ1Gi0U0zR"
+TS_DATE         = "fldcow5K7g"     # Date (datetime yyyy-MM-dd)
+TS_PERSON       = "fld0kWWCIO"     # Person (link → Employees)
+TS_JOB_TITLE    = "fldOXdrmxV"     # Job Title (text)
+TS_JOB_REC_ID   = "fldki43TLW"     # Job Record ID (text — recXXX from DAPUR)
+TS_DISCIPLINE   = "fld4epFXr4"     # Discipline (select)
+TS_HOURS        = "fldYKRyJxM"     # Hours (number)
+TS_WEEK         = "fld9sUX2gU"     # Week (formula — read-only)
+
+# Feature flags
+DAILY_HOURS_ENABLED = False   # set True when ready to go live with daily check-in
 
 # Polling
 POLLING_INTERVAL_MINUTES = 30

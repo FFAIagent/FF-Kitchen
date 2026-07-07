@@ -311,3 +311,115 @@ class EmployeesClient:
         ]
         _run(cmd)
         return True
+
+    # ------------------------------------------------------------------
+    # Timesheet methods (added 2026-07-07)
+    # ------------------------------------------------------------------
+
+    def _list_timesheet_records(self) -> list[dict]:
+        """Fetch all Timesheet records using the employees base token."""
+        tmp = BaseClient.__new__(BaseClient)
+        tmp.base_token = self.base_token
+        return tmp._list_records(config.TIMESHEET_TABLE)
+
+    def get_timesheet_today(self, person_open_id: str, job_record_id: str) -> bool:
+        """Return True if a Timesheet row already exists for this person+job yesterday.
+
+        Used as a dedup check before sending the daily hours DM card.
+        Matches on: Date == yesterday (WIB) AND Job Record ID == job_record_id
+        AND Person link contains the employee matching person_open_id.
+        """
+        from datetime import timedelta
+
+        yesterday = (datetime.now(WIB) - timedelta(days=1)).strftime("%Y-%m-%d")
+
+        # Resolve open_id → employee record_id
+        employees = self.get_employees()
+        emp_record_id = next(
+            (e["record_id"] for e in employees
+             if e["fields"].get(config.E_OPEN_ID) == person_open_id),
+            None,
+        )
+        if not emp_record_id:
+            log.warning(f"get_timesheet_today: no employee found for open_id={person_open_id}")
+            return False
+
+        for r in self._list_timesheet_records():
+            f = r["fields"]
+
+            # Match date — datetime fields may return ms timestamp or formatted string
+            date_val = f.get(config.TS_DATE)
+            if date_val is None:
+                continue
+            if isinstance(date_val, (int, float)):
+                # Unix milliseconds → convert to WIB date string
+                dt_utc = datetime.fromtimestamp(date_val / 1000, tz=pytz.utc)
+                date_str = dt_utc.astimezone(WIB).strftime("%Y-%m-%d")
+            else:
+                date_str = str(date_val)
+
+            if not date_str.startswith(yesterday):
+                continue
+
+            # Match job record ID
+            if f.get(config.TS_JOB_REC_ID) != job_record_id:
+                continue
+
+            # Match person — link field returns list of {record_id, ...} dicts
+            person_links = f.get(config.TS_PERSON, [])
+            if isinstance(person_links, list):
+                if any(
+                    isinstance(p, dict) and p.get("record_id") == emp_record_id
+                    for p in person_links
+                ):
+                    return True
+
+        return False
+
+    def create_timesheet_record(self, fields: dict) -> bool:
+        """Write a new daily row to the Timesheet table.
+
+        Expected fields (use config.TS_* constants as keys):
+            TS_DATE        → "YYYY-MM-DD 00:00:00"  (datetime string)
+            TS_PERSON      → [{"record_id": "recXXX"}]  (link to Employees)
+            TS_JOB_TITLE   → str
+            TS_JOB_REC_ID  → str  (recXXX from DAPUR)
+            TS_DISCIPLINE  → str  (Art / Copy / GD / Motion / Strategy / FA Artist)
+            TS_HOURS       → float
+        TS_WEEK is a formula field — do NOT include it.
+        """
+        tmp = BaseClient.__new__(BaseClient)
+        tmp.base_token = self.base_token
+        return tmp._create_record(config.TIMESHEET_TABLE, fields)
+
+    def update_employee_hours(
+        self,
+        employee_record_id: str,
+        weekly_h: float,
+        monthly_h: float,
+        overloaded: bool,
+    ) -> bool:
+        """Write Weekly Hours, Monthly Hours and Overloaded flag to an Employee record.
+
+        Called after every hours submission to keep the Employees table in sync.
+        overloaded=True when weekly_h > 40.
+        """
+        fields = {
+            config.E_WEEKLY_HOURS:  round(weekly_h, 1),
+            config.E_MONTHLY_HOURS: round(monthly_h, 1),
+            config.E_OVERLOADED:    overloaded,
+        }
+        cmd = [
+            "lark-cli", "base", "+record-upsert",
+            "--base-token", self.base_token,
+            "--table-id",   config.EMPLOYEES_TABLE,
+            "--record-id",  employee_record_id,
+            "--as", "user",
+            "--json", json.dumps(fields, ensure_ascii=False),
+        ]
+        _run(cmd)
+        log.info(
+            f"update_employee_hours: rec={employee_record_id} "
+            f"weekly={weekly_h}h monthly={monthly_h}h overloaded={overloaded}"
+        )
+        return True
