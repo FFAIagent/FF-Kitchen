@@ -20,7 +20,10 @@ class Poller:
         jobs = self.base.list_active_jobs()
         roster = self.base.get_roster()
         chat_ids = self.base.get_chat_ids() if hasattr(self.base, 'get_chat_ids') else {}
-        context = {"roster": roster, "chat_ids": chat_ids, "base": self.base, "im": self.im}
+        # Pre-fetch Clients once per poll cycle so handle_client_link_bridge
+        # doesn't make a separate API call per job.
+        clients = self.base.get_clients() if hasattr(self.base, 'get_clients') else []
+        context = {"roster": roster, "chat_ids": chat_ids, "base": self.base, "im": self.im, "clients": clients}
         for job in jobs:
             for handler in self._handlers:
                 try:

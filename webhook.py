@@ -208,15 +208,93 @@ def _action_log_hours(record_id: str, discipline: str, hours_str: str, base) -> 
         f"{current_hours}+{hours}={new_hours}h on {record_id}"
     )
 
-    # Role Bobot calibration
+    # Output Type Bobot calibration (v2 engine)
     if job and hours > 0:
         try:
-            job_type = job["fields"].get("fldoGTF6g5", "")
-            if job_type:
-                base.calibrate_role_bobot(job_type, discipline, new_hours)
-                log.info(f"Role Bobot calibrated: {job_type} × {discipline} = {new_hours}h")
+            _calibrate_output_type_bobot(job, discipline, new_hours, base)
         except Exception as e:
-            log.error(f"Role Bobot calibration failed after log_hours: {e}")
+            log.error(f"Output Type Bobot calibration failed after log_hours: {e}")
+
+
+def _calibrate_output_type_bobot(job: dict, discipline: str, actual_hours: float, base) -> None:
+    """Proportionally EMA-update Output Type Bobot per-discipline from actual hours.
+
+    For a job with deliverables e.g. {"KV": 2, "Social Post": 5}:
+      - Compute estimated hours for this discipline from current bobot values
+      - Compute ratio = actual / estimated
+      - Apply ratio × current base to each deliverable's discipline field via EMA (α=0.3)
+
+    Skipped entirely if:
+      - job has no deliverables filled in
+      - estimated hours for this discipline = 0 (discipline not involved in any deliverable)
+      - actual_hours = 0
+    """
+    from handlers.brief import _read_deliverables, _fuzzy_match_bobot
+
+    if actual_hours <= 0:
+        return
+
+    fields = job["fields"]
+    deliverables = _read_deliverables(fields)
+    if not deliverables:
+        return
+
+    bobot_map = base.get_output_type_bobot_map()
+    # Also need record_ids for the bobot records to update them
+    bobot_records = base._list_records(config.BOBOT_TABLE)
+    name_to_record: dict[str, str] = {}
+    for r in bobot_records:
+        name = r["fields"].get(config.OB_NAME, "")
+        if isinstance(name, list):
+            name = name[0] if name else ""
+        if name:
+            name_to_record[str(name).strip()] = r["record_id"]
+
+    # Compute total estimated hours for this discipline across all deliverables
+    estimated_total = 0.0
+    contrib: list[tuple[str, float]] = []  # [(d_type, contrib_hours)]
+    for d_type, qty in deliverables.items():
+        bobot = _fuzzy_match_bobot(d_type, bobot_map)
+        if bobot is None:
+            continue
+        disc_base = bobot.get(discipline, 0.0)
+        contrib_h = qty * disc_base
+        contrib.append((d_type, contrib_h))
+        estimated_total += contrib_h
+
+    if estimated_total <= 0:
+        return  # discipline not involved in any deliverable for this job
+
+    ratio = actual_hours / estimated_total
+    EMA_ALPHA = 0.3
+
+    for d_type, contrib_h in contrib:
+        if contrib_h <= 0:
+            continue
+        # Find record_id for this output type
+        rec_id = None
+        for k, v in name_to_record.items():
+            if k.strip().lower() == d_type.strip().lower() or d_type.strip().lower() in k.strip().lower():
+                rec_id = v
+                break
+        if not rec_id:
+            continue
+
+        # EMA update: new_base = (1-α) × current_base + α × observed_base
+        # observed_base = (contrib_h × ratio) / qty  ← back out per-unit hours
+        qty = deliverables[d_type]
+        current_base = bobot_map.get(d_type, {}).get(discipline, 0.0) or bobot_map.get(
+            next((k for k in bobot_map if d_type.lower() in k.lower()), d_type), {}
+        ).get(discipline, 0.0)
+        if current_base <= 0:
+            continue
+        observed_base = (contrib_h * ratio) / qty
+        new_base = round((1 - EMA_ALPHA) * current_base + EMA_ALPHA * observed_base, 2)
+        base.update_output_type_bobot(rec_id, discipline, new_base)
+        log.info(
+            f"OB calibrated: '{d_type}' × {discipline}: "
+            f"{current_base}h → {new_base}h (actual={actual_hours}h, ratio={ratio:.2f})"
+        )
 
 
 def _action_log_daily_hours(
@@ -273,6 +351,14 @@ def _action_log_daily_hours(
             f"log_daily_hours DAPUR update: {discipline} "
             f"{current_hours}+{hours}={new_hours}h on {record_id}"
         )
+
+        # Output Type Bobot calibration (v2 engine) — proportional EMA
+        if hours > 0:
+            try:
+                _calibrate_output_type_bobot(job, discipline, new_hours, base)
+            except Exception as cal_e:
+                log.error(f"log_daily_hours: OB calibration failed: {cal_e}")
+
     except Exception as e:
         log.error(f"log_daily_hours: failed to update DAPUR: {e}")
         return

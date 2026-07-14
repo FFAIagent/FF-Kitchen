@@ -11,7 +11,12 @@ import urllib.parse
 from typing import Any
 
 
-_IM_CMD = ["lark-cli", "im", "+messages-send", "--as", "user"]
+# DM / P2P messages — sent as bot (app identity, shows bot name in chat)
+_DM_CMD    = ["lark-cli", "im", "+messages-send", "--as", "bot"]
+# Group chat messages — sent as user (bot is not a member of all team chats)
+_GROUP_CMD = ["lark-cli", "im", "+messages-send", "--as", "user"]
+# Legacy alias kept for any code that references _IM_CMD directly
+_IM_CMD    = _DM_CMD
 _ACTION_BASE = "http://localhost:5001/action"
 
 
@@ -46,8 +51,12 @@ class IMClient:
         return _run(cmd)
 
     def send_group_text(self, chat_id: str, text: str) -> dict:
-        """Send a plain text message to a group chat."""
-        cmd = [*_IM_CMD, "--chat-id", chat_id, "--text", text]
+        """Send a plain text message to a group chat.
+
+        Uses user identity (_GROUP_CMD) because the bot is not a member of all
+        team group chats. DMs and cards use _DM_CMD (bot identity).
+        """
+        cmd = [*_GROUP_CMD, "--chat-id", chat_id, "--text", text]
         return _run(cmd)
 
     # ------------------------------------------------------------------

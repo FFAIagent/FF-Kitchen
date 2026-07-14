@@ -15,6 +15,15 @@ from handlers.stage import handle_stage_advance
 from handlers.feedback import handle_feedback_dispatch, run_calibration
 from handlers.employee import run_employee_updates, run_calibration_from_actuals
 from handlers.hours import handle_hours_collection, handle_daily_hours_checkin
+from handlers.client_bridge import handle_client_link_bridge
+import importlib.util as _ilu, os as _os
+_wl_spec = _ilu.spec_from_file_location(
+    "wonderlab_voucher_sync",
+    _os.path.join(_os.path.dirname(__file__), "wonderlab_voucher_sync.py"),
+)
+_wl_mod = _ilu.module_from_spec(_wl_spec)
+_wl_spec.loader.exec_module(_wl_mod)
+_voucher_sync = _wl_mod.run_sync
 from webhook import create_app
 import config
 
@@ -85,6 +94,7 @@ def main() -> None:
     poller.base = base
     poller.im = im
     poller.employees = employees
+    poller.register(handle_client_link_bridge)   # bridges Client Name → Client (link) for new form submissions
     poller.register(handle_brief_announced)
     poller.register(handle_deadline_reminders)
     poller.register(handle_post_presentation)
@@ -116,6 +126,18 @@ def main() -> None:
         timezone=WIB,
         args=[base, employees, im],
         id="ff_daily_hours",
+    )
+    # WonderLab voucher sync — every 10 min, auto-marks codes Redeemed when request is Confirmed
+    def _run_voucher_sync():
+        try:
+            _voucher_sync()
+        except Exception as e:
+            log.error(f"Voucher sync failed: {e}", exc_info=True)
+    scheduler.add_job(
+        _run_voucher_sync,
+        "interval",
+        minutes=10,
+        id="wonderlab_voucher_sync",
     )
     log.info("Scheduler starting — FF Kitchen agent running")
     # Run immediately on startup

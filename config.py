@@ -52,8 +52,50 @@ F_STRATEGY_ASSIGNED = "fldc8ikiB1"
 F_FA_ASSIGNED = "fldrM1lwar"
 F_CREATIVE_TEAM = "fldjflMn2N"      # was fldDXtWPj0
 F_JOB_TITLE = "fld6elh0J7"
-F_CLIENT_LINK = "fld7MDHHJN"
+F_JOB_TYPE  = "fldoGTF6g5"         # Job Type (select: Campaign/Tactical/etc.)
+F_CLIENT_LINK = "fld7MDHHJN"        # Client (link → Clients table) — agent-written
+F_CLIENT_NAME = "fldzr8aih0"        # Client Name (select, form-filled) — source for bridge
 F_BRIEF_LINK = "fldHwV7ihE"
+
+# Deliverable pair fields (added 2026-07-08, Estimation Engine v2)
+# Each slot = one select (Type) + one number (Qty). Up to 5 deliverables per job.
+# Created via +form-questions-create so they appear on the Job Submission Form automatically.
+F_DELIV_TYPE_1 = "fldrHoJ0Oy"
+F_DELIV_QTY_1  = "fld70Lqvmr"
+F_DELIV_TYPE_2 = "fldbg9TebR"
+F_DELIV_QTY_2  = "flddrutb8Q"
+F_DELIV_TYPE_3 = "fldO634Elc"
+F_DELIV_QTY_3  = "fldOC09bj7"
+F_DELIV_TYPE_4 = "fldZkr8w2S"
+F_DELIV_QTY_4  = "fldfnkOcgg"
+F_DELIV_TYPE_5 = "fldT54k98l"
+F_DELIV_QTY_5  = "fldtKPrSAE"
+
+# Parallel lists for easy iteration: zip(DELIV_TYPE_FIELDS, DELIV_QTY_FIELDS)
+DELIV_TYPE_FIELDS = [F_DELIV_TYPE_1, F_DELIV_TYPE_2, F_DELIV_TYPE_3, F_DELIV_TYPE_4, F_DELIV_TYPE_5]
+DELIV_QTY_FIELDS  = [F_DELIV_QTY_1,  F_DELIV_QTY_2,  F_DELIV_QTY_3,  F_DELIV_QTY_4,  F_DELIV_QTY_5]
+
+# Per-discipline Estimated Hours fields in DAPUR (added 2026-07-08)
+F_EST_HOURS_ART      = "fldLAXSE4w"
+F_EST_HOURS_COPY     = "fldNpsF0TR"
+F_EST_HOURS_GD       = "fldm6MYrqN"
+F_EST_HOURS_MOTION   = "fldgYZd6U4"
+F_EST_HOURS_STRATEGY = "fldHM18Z84"
+F_EST_HOURS_FA       = "fldIclxCRS"
+
+# Maps discipline name → F_EST_HOURS_* field ID
+DISCIPLINE_EST_FIELDS = {
+    "Art":       F_EST_HOURS_ART,
+    "Copy":      F_EST_HOURS_COPY,
+    "GD":        F_EST_HOURS_GD,
+    "Motion":    F_EST_HOURS_MOTION,
+    "Strategy":  F_EST_HOURS_STRATEGY,
+    "FA Artist": F_EST_HOURS_FA,
+}
+
+# 🏢 Clients table (same DAPUR base — tblZClrbSkOS6A1S)
+CLIENTS_TABLE   = "tblZClrbSkOS6A1S"
+CL_CLIENT_NAME  = "fldGHErQpc"      # Primary field: Client Name (text)
 
 # Per-role actual hours (agent writes when person reports via DM card)
 F_ACTUAL_HOURS_ART      = "fldi1bk0Ho"
@@ -103,6 +145,25 @@ EMPLOYEES_BASE_TOKEN = "SkrkbyaJwa3jxHsn619lG5a7g7f"
 EMPLOYEES_TABLE = "tblNyIHGQb2jh0Iy"
 
 # FF Employees field IDs
+# Output Type Bobot field IDs (added 2026-07-08, Estimation Engine v2)
+OB_NAME     = "fldRA8pYTD"   # Output type name (primary field)
+OB_ART      = "fldG42IdmS"   # Base Hours (Art)
+OB_COPY     = "fldxB6tgjC"   # Base Hours (Copy)
+OB_GD       = "fldWA9URGF"   # Base Hours (GD)
+OB_MOTION   = "fldd4Npqqj"   # Base Hours (Motion)
+OB_STRATEGY = "fldZIbOpSy"   # Base Hours (Strategy)
+OB_FA       = "fldsSJhuxZ"   # Base Hours (FA Artist)
+
+# Maps discipline name → OB_* field ID (for bobot reads + EMA writes)
+DISCIPLINE_OB_FIELDS = {
+    "Art":       OB_ART,
+    "Copy":      OB_COPY,
+    "GD":        OB_GD,
+    "Motion":    OB_MOTION,
+    "Strategy":  OB_STRATEGY,
+    "FA Artist": OB_FA,
+}
+
 # Role Bobot field IDs
 RB_JOB_TYPE      = "fldQgZFH6p"
 RB_DISCIPLINE    = "flddOyrvPH"
