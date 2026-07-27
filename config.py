@@ -129,6 +129,19 @@ R_NEXT_DEADLINE = "fldxVIm90A"     # Next Deadline (datetime)
 C_CHAT_ID = "fldIZIhz9f"
 C_TEAM_NAME = "fld2YQOPp6"
 
+# Account Roster table — [BETA] FF Task - Kitchen
+ACCOUNT_ROSTER_TABLE = "tblBYVXullrkrebn"
+AR_NAME         = "fld5AnD5Tc"   # Name (text)
+AR_OPEN_ID      = "fldNBAogFE"   # Lark Open ID (text)
+AR_DISCIPLINE   = "fld1dJtMr2"   # Discipline (select)
+AR_ROLE         = "fldt8rYf1t"   # Role (select)
+AR_TEAM         = "fldBX00aKw"   # Team (select)
+AR_LOAD_SCORE   = "fldMJCnOjn"   # Task Load Score (number)
+AR_TASK_COUNT   = "fldQ5RIBke"   # Task Count (number)
+AR_CURRENT_JOBS = "flddqDD1eJ"   # Current Jobs (text)
+AR_TASK_LINKS   = "fldPKbbDkz"   # Lark Task Links (text)
+AR_NEXT_DEADLINE= "fldR4aICjL"   # Next Deadline (datetime)
+
 # FF Employees base (Flock People System — separate base)
 EMPLOYEES_BASE_TOKEN = "SkrkbyaJwa3jxHsn619lG5a7g7f"
 EMPLOYEES_TABLE = "tblNyIHGQb2jh0Iy"
