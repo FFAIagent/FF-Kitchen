@@ -164,16 +164,27 @@ def run_load_sync(base) -> None:
         subtasks = _get_subtasks(str(task_guid).strip())
 
         for subtask in subtasks:
-            # Skip completed subtasks
-            status      = subtask.get("status", "")
+            # Skip completed subtasks.
+            # completed_at / complete_time come back as "0" (string) when not set —
+            # treat "0" and empty string as falsy to avoid skipping active tasks.
+            status        = subtask.get("status", "")
             complete_time = subtask.get("complete_time")
             is_completed  = subtask.get("is_completed")
             completed_at  = subtask.get("completed_at")
+            agent_status  = subtask.get("agent_task_status")
+
+            def _is_set(v) -> bool:
+                """Return True only if v is a meaningful (non-zero) value."""
+                if v is None:
+                    return False
+                return str(v).strip() not in ("", "0", "false", "False")
+
             if (
-                status in ("done", "complete_time")
-                or complete_time
-                or is_completed
-                or completed_at
+                status in ("done", "completed")
+                or _is_set(complete_time)
+                or _is_set(is_completed)
+                or _is_set(completed_at)
+                or agent_status == 2  # 2 = done in Lark task API
             ):
                 continue
 

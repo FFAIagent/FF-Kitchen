@@ -154,8 +154,8 @@ class BaseClient:
     _ACTIVE_JOBS_FILTER = json.dumps({
         "logic": "and",
         "conditions": [
-            ["Account Status", "!=", "DONE"],
-            ["Account Status", "!=", "ON HOLD"],
+            ["Job Status", "!=", "DONE"],
+            ["Job Status", "!=", "ON HOLD"],
         ],
     })
 
