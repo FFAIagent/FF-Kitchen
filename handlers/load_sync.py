@@ -83,19 +83,25 @@ def _bobot_match(bobot_map: dict[str, dict[str, float]], summary: str) -> dict[s
 
 
 def _extract_open_ids(members: Any) -> list[str]:
-    """Extract list of open_ids from subtask members field.
+    """Extract assignee open_ids from subtask members field.
 
-    Lark returns members as a list of dicts with various shapes:
-      {"id": "ou_xxx", ...}  or  {"open_id": "ou_xxx", ...}
+    Lark returns members as a list of dicts — each person may appear
+    multiple times with different roles (assignee, follower, etc.).
+    Only count role=assignee to avoid double-counting.
     """
     if not isinstance(members, list):
         return []
     result = []
+    seen = set()
     for m in members:
         if not isinstance(m, dict):
             continue
+        role = m.get("role", "assignee")
+        if role != "assignee":
+            continue
         oid = m.get("id") or m.get("open_id") or ""
-        if oid:
+        if oid and oid not in seen:
+            seen.add(oid)
             result.append(str(oid))
     return result
 
