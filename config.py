@@ -144,24 +144,30 @@ OB_FA       = "fldR6HPSPs"   # Base Hours (FA Artist)
 OB_AE       = "fld4v8njKS"   # Base Hours (Account Executive)
 OB_AM       = "fldhg8Jkhi"   # Base Hours (Account Manager)
 OB_AD       = "fldtLsLgB5"   # Base Hours (Account Director)
-OB_GAD      = "fldJdPYbOx"   # Base Hours (Group Account Director)
 OB_CD       = "fld404DJ5u"   # Base Hours (Creative Director)
 OB_CGH      = "fld4x9MNkU"   # Base Hours (Creative Group Head)
+OB_ECD      = "fldUO7bg6M"   # Base Hours (Executive Creative Director)
+OB_GAD      = "fldw5NDj1D"   # Base Hours (Group Account Director)
+OB_STRATEGY = "fld4MTDGS3"   # Base Hours (Strategy)
 
 # Maps discipline name → OB_* field ID (for bobot reads + EMA writes)
+# Creative: Art, Copy, GD, Motion, FA, CGH, CD
+# Account:  AE, AM, AD
+# Leadership: ECD, GAD, Strategy, PM
 DISCIPLINE_OB_FIELDS = {
     "Art":       OB_ART,
     "Copy":      OB_COPY,
     "GD":        OB_GD,
     "Motion":    OB_MOTION,
-    "Strategy":  OB_STRATEGY,
     "FA Artist": OB_FA,
-    "Account Executive": OB_AE,
-    "Account Manager":   OB_AM,
-    "Account Director":  OB_AD,
-    "Group Account Director": OB_GAD,
-    "Creative Director":      OB_CD,
-    "Creative Group Head":    OB_CGH,
+    "Creative Group Head":        OB_CGH,
+    "Creative Director":          OB_CD,
+    "Account Executive":          OB_AE,
+    "Account Manager":            OB_AM,
+    "Account Director":           OB_AD,
+    "Executive Creative Director": OB_ECD,
+    "Group Account Director":     OB_GAD,
+    "Strategy":                   OB_STRATEGY,
 }
 
 # FF Employees field IDs
