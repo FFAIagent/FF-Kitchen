@@ -15,9 +15,6 @@ DAPUR_TABLE = "tblpNqjumvstYOnj"
 ROSTER_TABLE = "tblmeLyHTfAWvCm3"
 CHAT_ID_TABLE = "tbl74dnKu2q6o8nQ"
 BOBOT_TABLE      = "tblV0tT690HxKQwT"
-ROLE_BOBOT_TABLE = "tbl6vvRtr7MXiZvR"
-FEEDBACK_TABLE = "tblqT81eifqSvVqN"
-REVISION_TABLE = "tblJwpd41jumoLk8"
 
 # DAPUR field IDs
 # NOTE: IDs below were updated 2026-07-06 after +form-questions-delete incident
@@ -93,10 +90,6 @@ DISCIPLINE_EST_FIELDS = {
     "FA Artist": F_EST_HOURS_FA,
 }
 
-# 🏢 Clients table (same DAPUR base — tblZClrbSkOS6A1S)
-CLIENTS_TABLE   = "tblZClrbSkOS6A1S"
-CL_CLIENT_NAME  = "fldGHErQpc"      # Primary field: Client Name (text)
-
 # Per-role actual hours (agent writes when person reports via DM card)
 F_ACTUAL_HOURS_ART      = "fldi1bk0Ho"
 F_ACTUAL_HOURS_COPY     = "fldU3iD1Ot"
@@ -132,9 +125,6 @@ R_LOAD_SCORE = "fldlKvk26j"   # was fldicOdUnJ (formula); now agent-written numb
 R_AVAILABLE = "fld6WLvIHk"
 R_CURRENT_JOBS = "fldRbrkboh"
 R_NEXT_DEADLINE = "fldaAvILjb"
-R_SPEED_INDEX = "fldIQjTuZi"
-R_FEEDBACK_COUNT = "fldOi3LAg8"
-R_SPEED_TREND = "flds0X9F37"
 
 # Creative Chat ID field IDs
 C_CHAT_ID = "fldIZIhz9f"
@@ -164,15 +154,6 @@ DISCIPLINE_OB_FIELDS = {
     "FA Artist": OB_FA,
 }
 
-# Role Bobot field IDs
-RB_JOB_TYPE      = "fldQgZFH6p"
-RB_DISCIPLINE    = "flddOyrvPH"
-RB_BASE_HOURS    = "fldXcbCf2T"
-RB_SAMPLE_COUNT  = "fldYO2fYNX"
-RB_CONFIDENCE    = "fldAuAfAch"
-RB_LAST_CAL      = "fldPGv5ePz"
-RB_REASONING     = "fldhsZJzCN"
-
 E_NAME             = "fldvCb5Ttp"
 E_OPEN_ID          = "fldiR5gXWt"
 E_CURRENT_PROJECTS = "fldGU5CHbk"
@@ -201,12 +182,6 @@ POLLING_INTERVAL_MINUTES = 30
 POLL_START_HOUR = 8   # 08:00 WIB
 POLL_END_HOUR = 22    # 22:00 WIB
 TIMEZONE = "Asia/Jakarta"
-
-# Learning engine
-FEEDBACK_CALIBRATION_THRESHOLD = 5  # calibrate after N new feedbacks
-SUPERVISOR_ASK_DELAY_DAYS = 3
-ECD_ASK_DELAY_DAYS = 7
-MAX_FEEDBACK_QUESTIONS_PER_DAY = 2
 
 # Stage Status values
 STAGE_AWAITING_APPROVAL = "Awaiting Approval"

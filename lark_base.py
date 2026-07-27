@@ -186,10 +186,6 @@ class BaseClient:
         """Return all Team Roster records."""
         return self._list_records(config.ROSTER_TABLE)
 
-    def get_clients(self) -> list[dict]:
-        """Return all Clients records from the Clients table in the DAPUR base."""
-        return self._list_records(config.CLIENTS_TABLE)
-
     def update_roster_record(
         self,
         record_id: str,
@@ -217,68 +213,6 @@ class BaseClient:
                 if team and chat:
                     result[str(team)] = str(chat)
         return result
-
-    def get_role_bobot(self) -> dict[tuple, float]:
-        """Return {(job_type, discipline): base_hours} from Role Bobot table."""
-        records = self._list_records(config.ROLE_BOBOT_TABLE)
-        result: dict[tuple, float] = {}
-        for r in records:
-            f = r["fields"]
-            jt  = f.get(config.RB_JOB_TYPE, "")
-            dis = f.get(config.RB_DISCIPLINE, "")
-            hrs = f.get(config.RB_BASE_HOURS)
-            try:
-                hrs = float(hrs) if hrs is not None else 0.0
-            except (TypeError, ValueError):
-                hrs = 0.0
-            if jt and dis:
-                result[(str(jt), str(dis))] = hrs
-        return result
-
-    def calibrate_role_bobot(
-        self,
-        job_type: str,
-        discipline: str,
-        observed_hours: float,
-    ) -> bool:
-        """Update Role Bobot with a new observed data point using EMA (α=0.3).
-
-        Finds the record for (job_type, discipline), applies exponential
-        moving average: new_base = 0.7 × current_base + 0.3 × observed.
-        Increments Sample Count. Sets Confidence based on sample count.
-        """
-        records = self._list_records(config.ROLE_BOBOT_TABLE)
-        target = next(
-            (r for r in records
-             if r["fields"].get(config.RB_JOB_TYPE) == job_type
-             and r["fields"].get(config.RB_DISCIPLINE) == discipline),
-            None,
-        )
-        if not target:
-            log.warning(f"Role Bobot: no record for {job_type} × {discipline}")
-            return False
-
-        f = target["fields"]
-        current = float(f.get(config.RB_BASE_HOURS) or observed_hours)
-        samples = int(f.get(config.RB_SAMPLE_COUNT) or 0) + 1
-        new_base = round(0.7 * current + 0.3 * observed_hours, 1)
-        confidence = "Low" if samples < 5 else "Medium" if samples < 20 else "High"
-
-        from datetime import datetime
-        import pytz
-        now = datetime.now(pytz.timezone(config.TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
-
-        patch = {
-            config.RB_BASE_HOURS:   new_base,
-            config.RB_SAMPLE_COUNT: samples,
-            config.RB_CONFIDENCE:   confidence,
-            config.RB_LAST_CAL:     now,
-            config.RB_REASONING:    (
-                f"EMA update: prev={current}h, observed={observed_hours}h → "
-                f"new={new_base}h (n={samples})"
-            ),
-        }
-        return self._patch_record(config.ROLE_BOBOT_TABLE, target["record_id"], patch)
 
     def get_output_type_bobot(self) -> list[dict]:
         """Return all Output Type Bobot records."""
@@ -322,14 +256,6 @@ class BaseClient:
             log.warning(f"update_output_type_bobot: unknown discipline '{discipline}'")
             return False
         return self._patch_record(config.BOBOT_TABLE, record_id, {fid: round(new_hours, 2)})
-
-    def create_feedback_record(self, fields: dict) -> bool:
-        """Create a new record in the Feedback Log table."""
-        return self._create_record(config.FEEDBACK_TABLE, fields)
-
-    def list_feedback_records(self) -> list[dict]:
-        """Return all Feedback Log records."""
-        return self._list_records(config.FEEDBACK_TABLE)
 
 
 class EmployeesClient:

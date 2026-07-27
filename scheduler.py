@@ -12,10 +12,8 @@ from handlers.brief import handle_brief_announced
 from handlers.reminder import handle_deadline_reminders
 from handlers.presentation import handle_post_presentation
 from handlers.stage import handle_stage_advance
-from handlers.feedback import handle_feedback_dispatch, run_calibration
-from handlers.employee import run_employee_updates, run_calibration_from_actuals
+from handlers.employee import run_employee_updates
 from handlers.hours import handle_hours_collection, handle_daily_hours_checkin
-from handlers.client_bridge import handle_client_link_bridge
 import importlib.util as _ilu, os as _os
 _wl_spec = _ilu.spec_from_file_location(
     "wonderlab_voucher_sync",
@@ -54,11 +52,6 @@ def poll_job(poller: Poller) -> None:
         jobs = poller.base.list_active_jobs()
         roster = poller.base.get_roster()
         run_employee_updates(jobs, roster, poller.base, poller.employees)
-        # Role Bobot calibration from any newly completed jobs with actual hours
-        all_jobs = poller.base._list_records(config.DAPUR_TABLE)
-        run_calibration_from_actuals(all_jobs, poller.base)
-        # Speed Index calibration run if feedback threshold met
-        run_calibration(poller.base)
     except Exception as e:
         log.error(f"Poll failed: {e}", exc_info=True)
 
@@ -94,12 +87,10 @@ def main() -> None:
     poller.base = base
     poller.im = im
     poller.employees = employees
-    poller.register(handle_client_link_bridge)   # bridges Client Name → Client (link) for new form submissions
     poller.register(handle_brief_announced)
     poller.register(handle_deadline_reminders)
     poller.register(handle_post_presentation)
     poller.register(handle_stage_advance)
-    poller.register(handle_feedback_dispatch)
     poller.register(handle_hours_collection)
 
     # Start Flask webhook in a background daemon thread

@@ -98,84 +98,13 @@ def format_current_jobs(jobs: list[dict]) -> str:
     return " · ".join(parts)
 
 
-def run_calibration_from_actuals(all_jobs: list[dict], base) -> None:
-    """Calibrate Role Bobot from DONE jobs that have per-role actual hours filled.
-
-    Priority:
-      1. Per-role actual hours fields (F_ACTUAL_HOURS_ART etc.) — filled by team
-         members via DM hours card. These are real self-reported numbers.
-      2. Fallback proportional distribution from total F_ACTUAL_HOURS — used only
-         when no per-role data exists yet and total hours is available.
-
-    Calibration only runs once per (job, discipline) — jobs without any actual
-    hours data are skipped entirely.
-    """
-    role_bobot = base.get_role_bobot()
-    for job in all_jobs:
-        f = job["fields"]
-        if f.get(config.F_ACCOUNT_STATUS) != "DONE":
-            continue
-        job_type = f.get("fldoGTF6g5", "")
-        if not job_type:
-            continue
-
-        for _, discipline in config.ASSIGNMENT_FIELD_TO_DISCIPLINE.items():
-            hours_field, requested_flag = config.DISCIPLINE_HOURS_FIELDS.get(discipline, (None, None))
-            if not hours_field:
-                continue
-
-            per_role_hours = f.get(hours_field)
-            try:
-                per_role_hours = float(per_role_hours) if per_role_hours is not None else None
-            except (TypeError, ValueError):
-                per_role_hours = None
-
-            if per_role_hours is not None and per_role_hours > 0:
-                # Real self-reported hours — use directly
-                base.calibrate_role_bobot(job_type, discipline, per_role_hours)
-                continue
-
-            # Fallback: proportional from total actual hours (only if role was assigned)
-            assignment_fld = next(
-                (fld for fld, d in config.ASSIGNMENT_FIELD_TO_DISCIPLINE.items() if d == discipline),
-                None,
-            )
-            if not assignment_fld:
-                continue
-            linked = f.get(assignment_fld) or []
-            if not (isinstance(linked, list) and any(isinstance(i, dict) for i in linked)):
-                continue  # not assigned on this job
-
-            total_actual = f.get(config.F_ACTUAL_HOURS)
-            try:
-                total_actual = float(total_actual) if total_actual is not None else 0.0
-            except (TypeError, ValueError):
-                total_actual = 0.0
-            if total_actual <= 0:
-                continue
-
-            # Distribute proportionally
-            assigned_disciplines = [
-                d for fld, d in config.ASSIGNMENT_FIELD_TO_DISCIPLINE.items()
-                if isinstance(f.get(fld), list)
-                and any(isinstance(i, dict) for i in (f.get(fld) or []))
-            ]
-            if not assigned_disciplines:
-                continue
-            total_bobot = sum(role_bobot.get((job_type, d), _FALLBACK_HOURS) for d in assigned_disciplines)
-            weight = role_bobot.get((job_type, discipline), _FALLBACK_HOURS)
-            observed = round(total_actual * (weight / total_bobot) if total_bobot else total_actual / len(assigned_disciplines), 1)
-            base.calibrate_role_bobot(job_type, discipline, observed)
-
-
 def run_employee_updates(
     active_jobs: list[dict],
     roster: list[dict],
     base,
     employees_client=None,
 ) -> None:
-    role_bobot = base.get_role_bobot()
-    person_map = build_person_job_map(active_jobs, roster, role_bobot=role_bobot)
+    person_map = build_person_job_map(active_jobs, roster)
     roster_lookup = {r["record_id"]: r for r in roster}
 
     # Build Open ID → Employee record map for cross-base write
