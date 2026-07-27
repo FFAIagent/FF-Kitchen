@@ -148,6 +148,8 @@ OB_AM       = "fldhg8Jkhi"   # Base Hours (Account Manager)
 OB_AD       = "fldtLsLgB5"   # Base Hours (Account Director)
 OB_AAD      = "fldgLmyARL"   # Base Hours (Associate Account Director)
 OB_GAD      = "fldJdPYbOx"   # Base Hours (Group Account Director)
+OB_CD       = "fld404DJ5u"   # Base Hours (Creative Director)
+OB_CGH      = "fld4x9MNkU"   # Base Hours (Creative Group Head)
 
 # Maps discipline name → OB_* field ID (for bobot reads + EMA writes)
 DISCIPLINE_OB_FIELDS = {
@@ -164,6 +166,8 @@ DISCIPLINE_OB_FIELDS = {
     "Account Director":         OB_AD,
     "Associate Account Director": OB_AAD,
     "Group Account Director":   OB_GAD,
+    "Creative Director":        OB_CD,
+    "Creative Group Head":      OB_CGH,
 }
 
 # FF Employees field IDs
