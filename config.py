@@ -141,7 +141,13 @@ OB_GD       = "fldL3cfoWC"   # Base Hours (GD)
 OB_MOTION   = "fldEEbkF1i"   # Base Hours (Motion)
 OB_STRATEGY = "fldoDJBj8T"   # Base Hours (Strategy)
 OB_FA       = "fldR6HPSPs"   # Base Hours (FA Artist)
-OB_ACCOUNT  = "fldNwAkcJY"   # Base Hours (Account)
+OB_JR_AE    = "fldcabF2Gz"   # Base Hours (Junior Account Executive)
+OB_AE       = "fld4v8njKS"   # Base Hours (Account Executive)
+OB_SR_AE    = "fldFd8zxjE"   # Base Hours (Senior Account Executive)
+OB_AM       = "fldhg8Jkhi"   # Base Hours (Account Manager)
+OB_AD       = "fldtLsLgB5"   # Base Hours (Account Director)
+OB_AAD      = "fldgLmyARL"   # Base Hours (Associate Account Director)
+OB_GAD      = "fldJdPYbOx"   # Base Hours (Group Account Director)
 
 # Maps discipline name → OB_* field ID (for bobot reads + EMA writes)
 DISCIPLINE_OB_FIELDS = {
@@ -151,7 +157,13 @@ DISCIPLINE_OB_FIELDS = {
     "Motion":    OB_MOTION,
     "Strategy":  OB_STRATEGY,
     "FA Artist": OB_FA,
-    "Account":   OB_ACCOUNT,
+    "Junior Account Executive": OB_JR_AE,
+    "Account Executive":        OB_AE,
+    "Senior Account Executive": OB_SR_AE,
+    "Account Manager":          OB_AM,
+    "Account Director":         OB_AD,
+    "Associate Account Director": OB_AAD,
+    "Group Account Director":   OB_GAD,
 }
 
 # FF Employees field IDs
