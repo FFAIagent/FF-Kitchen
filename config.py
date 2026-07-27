@@ -143,6 +143,7 @@ OB_GD       = "fldWA9URGF"   # Base Hours (GD)
 OB_MOTION   = "fldd4Npqqj"   # Base Hours (Motion)
 OB_STRATEGY = "fldZIbOpSy"   # Base Hours (Strategy)
 OB_FA       = "fldsSJhuxZ"   # Base Hours (FA Artist)
+OB_ACCOUNT  = "fldNwAkcJY"   # Base Hours (Account)
 
 # Maps discipline name → OB_* field ID (for bobot reads + EMA writes)
 DISCIPLINE_OB_FIELDS = {
@@ -152,6 +153,7 @@ DISCIPLINE_OB_FIELDS = {
     "Motion":    OB_MOTION,
     "Strategy":  OB_STRATEGY,
     "FA Artist": OB_FA,
+    "Account":   OB_ACCOUNT,
 }
 
 E_NAME             = "fldvCb5Ttp"
