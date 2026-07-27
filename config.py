@@ -141,12 +141,9 @@ OB_GD       = "fldL3cfoWC"   # Base Hours (GD)
 OB_MOTION   = "fldEEbkF1i"   # Base Hours (Motion)
 OB_STRATEGY = "fldoDJBj8T"   # Base Hours (Strategy)
 OB_FA       = "fldR6HPSPs"   # Base Hours (FA Artist)
-OB_JR_AE    = "fldj2aoWMa"   # Base Hours (Junior Account Executive)
 OB_AE       = "fld4v8njKS"   # Base Hours (Account Executive)
-OB_SR_AE    = "fldXfbxPn1"   # Base Hours (Senior Account Executive)
 OB_AM       = "fldhg8Jkhi"   # Base Hours (Account Manager)
 OB_AD       = "fldtLsLgB5"   # Base Hours (Account Director)
-OB_AAD      = "fldv5S7DOf"   # Base Hours (Associate Account Director)
 OB_GAD      = "fldJdPYbOx"   # Base Hours (Group Account Director)
 OB_CD       = "fld404DJ5u"   # Base Hours (Creative Director)
 OB_CGH      = "fld4x9MNkU"   # Base Hours (Creative Group Head)
@@ -159,15 +156,12 @@ DISCIPLINE_OB_FIELDS = {
     "Motion":    OB_MOTION,
     "Strategy":  OB_STRATEGY,
     "FA Artist": OB_FA,
-    "Junior Account Executive": OB_JR_AE,
-    "Account Executive":        OB_AE,
-    "Senior Account Executive": OB_SR_AE,
-    "Account Manager":          OB_AM,
-    "Account Director":         OB_AD,
-    "Associate Account Director": OB_AAD,
-    "Group Account Director":   OB_GAD,
-    "Creative Director":        OB_CD,
-    "Creative Group Head":      OB_CGH,
+    "Account Executive": OB_AE,
+    "Account Manager":   OB_AM,
+    "Account Director":  OB_AD,
+    "Group Account Director": OB_GAD,
+    "Creative Director":      OB_CD,
+    "Creative Group Head":    OB_CGH,
 }
 
 # FF Employees field IDs
