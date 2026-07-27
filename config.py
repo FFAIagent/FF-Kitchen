@@ -5,58 +5,55 @@ load_dotenv()
 
 LARK_APP_ID = os.environ.get("LARK_APP_ID", "")
 LARK_APP_SECRET = os.environ.get("LARK_APP_SECRET", "")
-BASE_TOKEN = os.environ.get("BASE_TOKEN", "HH0qb3myka5wPmsyInGlH6l3grd")
+BASE_TOKEN = os.environ.get("BASE_TOKEN", "A6GVbQ6sRaYJkZsGpVZlVDJ8gmf")
 ECD_OPEN_ID = os.environ.get("ECD_OPEN_ID", "")
 WEBHOOK_PORT = int(os.environ.get("WEBHOOK_PORT", "5001"))
 WEBHOOK_SECRET = os.environ.get("WEBHOOK_SECRET", "")
 
-# Table IDs
-DAPUR_TABLE = "tblpNqjumvstYOnj"
-ROSTER_TABLE = "tblmeLyHTfAWvCm3"
-CHAT_ID_TABLE = "tbl74dnKu2q6o8nQ"
-BOBOT_TABLE      = "tblV0tT690HxKQwT"
+# Table IDs — [BETA] FF Task - Kitchen (A6GVbQ6sRaYJkZsGpVZlVDJ8gmf)
+DAPUR_TABLE = "tbl358o9AWPkbAoK"
+ROSTER_TABLE = "tblysyNZXISK9vF2"
+CHAT_ID_TABLE = "tbloWqFv6UIrUXE0"
+BOBOT_TABLE      = "tblAMV4AqwPvWj1C"
 
-# DAPUR field IDs
-# NOTE: IDs below were updated 2026-07-06 after +form-questions-delete incident
-# that deleted table fields. Fields were recreated; these are the new IDs.
-F_STAGE_STATUS = "fldrfgbNwP"       # was fldNwVKYVH
-F_APPROVAL_STATUS = "fld7NiL5es"    # was fld5ci4q1p
-F_JOB_BRIEF_DATE = "flddtec2nd"     # was fldZvsitPG
-F_FIRST_REVIEW_DATE = "fldBpnMhNy"  # was fldFcsIm6z
-F_CLIENT_PRES_DATE = "fld5eCqBAP"   # was fldJQ9yhx0
-F_SECOND_REVIEW_DATE = "fldYUT0V1Q" # was fldD9v82lp
-F_THIRD_REVIEW_DATE = "fldXPjHJGc"  # was fldfIayvrI
-F_NEXT_MILESTONE = "fld9s3v6yW"     # unchanged
-F_ESTIMATED_HOURS = "fldO9ZtCop"    # was fldCBCnuQu
-F_LAST_AGENT_SYNC = "fldMagUyrX"    # was fldOxFaNTn
-F_BRIEF_ANNOUNCED = "fld7PcmubU"
-F_JOB_BRIEF_REMINDER = "fldILWcToS"
-F_FIRST_REVIEW_REMINDER = "fld8gu09fN"
-F_CLIENT_PRES_REMINDER = "fldTECKIZi"
-F_SECOND_REVIEW_REMINDER = "fldBOfqiLk"
-F_POST_PRES_CARD_SENT = "fld4zp29Z7"
-F_PM_PIC = "fldH4QtERK"
-F_REVISION_COUNT = "fld2iY2pK1"     # was fld0dWannS
-F_ACCOUNT_STATUS = "fldAPwgV9w"     # was fldxhKL0x0
-F_ACCOUNT_PIC = "fldPJRWdSW"        # was fldylh3KLO
-F_ACTUAL_HOURS = "fldG2NUYK6"       # was fldF3smRP5
-F_AI_CONFIDENCE = "fldS8qx4F3"      # was fldcrCj6LT
+# DAPUR field IDs — migrated 2026-07-27 (new base has new field IDs)
+F_STAGE_STATUS = "fldrfgbNwP"       # stale — field doesn't exist in new base; handlers will no-op
+F_APPROVAL_STATUS = "fld7NiL5es"    # stale — no-op
+F_JOB_BRIEF_DATE = "flddtec2nd"     # stale — no-op
+F_FIRST_REVIEW_DATE = "fldBpnMhNy"  # stale — no-op
+F_CLIENT_PRES_DATE = "fld5eCqBAP"   # stale — no-op
+F_SECOND_REVIEW_DATE = "fldYUT0V1Q" # stale — no-op
+F_THIRD_REVIEW_DATE = "fldXPjHJGc"  # stale — no-op
+F_NEXT_MILESTONE = "fld9s3v6yW"     # stale — no-op
+F_ESTIMATED_HOURS = "fldO9ZtCop"    # stale — no-op
+F_LAST_AGENT_SYNC = "fldMagUyrX"    # stale — no-op
+F_BRIEF_ANNOUNCED = "fld7PcmubU"    # stale — no-op
+F_JOB_BRIEF_REMINDER = "fldILWcToS" # stale — no-op
+F_FIRST_REVIEW_REMINDER = "fld8gu09fN"  # stale — no-op
+F_CLIENT_PRES_REMINDER = "fldTECKIZi"   # stale — no-op
+F_SECOND_REVIEW_REMINDER = "fldBOfqiLk" # stale — no-op
+F_POST_PRES_CARD_SENT = "fld4zp29Z7"    # stale — no-op
+F_PM_PIC = "fld0NI0H9k"            # updated
+F_REVISION_COUNT = "fld0dWannS"     # updated
+F_ACCOUNT_STATUS = "fldxhKL0x0"    # updated
+F_ACCOUNT_PIC = "fldylh3KLO"       # updated
+F_ACTUAL_HOURS = "fldF3smRP5"      # updated
+F_AI_CONFIDENCE = "fldS8qx4F3"     # stale — no-op
 F_ART_ASSIGNED = "fldEX4xvDL"
 F_COPY_ASSIGNED = "fldqZGdn7Z"
 F_GD_ASSIGNED = "fldUFuqlPa"
 F_MOTION_ASSIGNED = "fldE5yJTeM"
 F_STRATEGY_ASSIGNED = "fldc8ikiB1"
 F_FA_ASSIGNED = "fldrM1lwar"
-F_CREATIVE_TEAM = "fldjflMn2N"      # was fldDXtWPj0
+F_CREATIVE_TEAM = "fldDXtWPj0"     # updated
 F_JOB_TITLE = "fld6elh0J7"
 F_JOB_TYPE  = "fldoGTF6g5"         # Job Type (select: Campaign/Tactical/etc.)
 F_CLIENT_LINK = "fld7MDHHJN"        # Client (link → Clients table) — agent-written
 F_CLIENT_NAME = "fldzr8aih0"        # Client Name (select, form-filled) — source for bridge
 F_BRIEF_LINK = "fldHwV7ihE"
+F_LARK_TASK_ID = "fldA6mSsZy"      # Lark Task ID — used by load_sync
 
-# Deliverable pair fields (added 2026-07-08, Estimation Engine v2)
-# Each slot = one select (Type) + one number (Qty). Up to 5 deliverables per job.
-# Created via +form-questions-create so they appear on the Job Submission Form automatically.
+# Deliverable pair fields (stale IDs — field doesn't exist in new base; handlers no-op)
 F_DELIV_TYPE_1 = "fldrHoJ0Oy"
 F_DELIV_QTY_1  = "fld70Lqvmr"
 F_DELIV_TYPE_2 = "fldbg9TebR"
@@ -72,7 +69,7 @@ F_DELIV_QTY_5  = "fldtKPrSAE"
 DELIV_TYPE_FIELDS = [F_DELIV_TYPE_1, F_DELIV_TYPE_2, F_DELIV_TYPE_3, F_DELIV_TYPE_4, F_DELIV_TYPE_5]
 DELIV_QTY_FIELDS  = [F_DELIV_QTY_1,  F_DELIV_QTY_2,  F_DELIV_QTY_3,  F_DELIV_QTY_4,  F_DELIV_QTY_5]
 
-# Per-discipline Estimated Hours fields in DAPUR (added 2026-07-08)
+# Per-discipline Estimated Hours fields in DAPUR (stale — no-op in new base)
 F_EST_HOURS_ART      = "fldLAXSE4w"
 F_EST_HOURS_COPY     = "fldNpsF0TR"
 F_EST_HOURS_GD       = "fldm6MYrqN"
@@ -116,15 +113,17 @@ DISCIPLINE_HOURS_FIELDS = {
     "FA Artist":(F_ACTUAL_HOURS_FA,       F_HOURS_REQUESTED_FA),
 }
 
-# Team Roster field IDs
+# Team Roster field IDs — [BETA] FF Task - Kitchen
 R_NAME = "fldLy0sa0j"
 R_DISCIPLINE = "fld0eDLpb8"
 R_ROLE = "fldVQkaiOa"
 R_OPEN_ID = "fldFrxViIu"
-R_LOAD_SCORE = "fldlKvk26j"   # was fldicOdUnJ (formula); now agent-written number (hours)
+R_LOAD_SCORE = "fldpswoAH1"        # Task Load Score (number, agent-written from Lark Tasks)
+R_TASK_COUNT = "fldv8WjTog"        # Task Count (number of active subtasks assigned)
+R_TASK_LINKS = "fldkS90nsC"        # Lark Task Links (URL field — applinks to active tasks)
 R_AVAILABLE = "fld6WLvIHk"
-R_CURRENT_JOBS = "fldRbrkboh"
-R_NEXT_DEADLINE = "fldaAvILjb"
+R_CURRENT_JOBS = "fldieV3QYi"      # Current Jobs (text)
+R_NEXT_DEADLINE = "fldxVIm90A"     # Next Deadline (datetime)
 
 # Creative Chat ID field IDs
 C_CHAT_ID = "fldIZIhz9f"
@@ -134,15 +133,14 @@ C_TEAM_NAME = "fld2YQOPp6"
 EMPLOYEES_BASE_TOKEN = "SkrkbyaJwa3jxHsn619lG5a7g7f"
 EMPLOYEES_TABLE = "tblNyIHGQb2jh0Iy"
 
-# FF Employees field IDs
-# Output Type Bobot field IDs (added 2026-07-08, Estimation Engine v2)
+# Output Type Bobot field IDs — [BETA] FF Task - Kitchen
 OB_NAME     = "fldRA8pYTD"   # Output type name (primary field)
-OB_ART      = "fldG42IdmS"   # Base Hours (Art)
-OB_COPY     = "fldxB6tgjC"   # Base Hours (Copy)
-OB_GD       = "fldWA9URGF"   # Base Hours (GD)
-OB_MOTION   = "fldd4Npqqj"   # Base Hours (Motion)
-OB_STRATEGY = "fldZIbOpSy"   # Base Hours (Strategy)
-OB_FA       = "fldsSJhuxZ"   # Base Hours (FA Artist)
+OB_ART      = "fldkp2b5Iw"   # Base Hours (Art)
+OB_COPY     = "fldZlM1xMw"   # Base Hours (Copy)
+OB_GD       = "fldL3cfoWC"   # Base Hours (GD)
+OB_MOTION   = "fldEEbkF1i"   # Base Hours (Motion)
+OB_STRATEGY = "fldoDJBj8T"   # Base Hours (Strategy)
+OB_FA       = "fldR6HPSPs"   # Base Hours (FA Artist)
 OB_ACCOUNT  = "fldNwAkcJY"   # Base Hours (Account)
 
 # Maps discipline name → OB_* field ID (for bobot reads + EMA writes)
@@ -156,6 +154,7 @@ DISCIPLINE_OB_FIELDS = {
     "Account":   OB_ACCOUNT,
 }
 
+# FF Employees field IDs
 E_NAME             = "fldvCb5Ttp"
 E_OPEN_ID          = "fldiR5gXWt"
 E_CURRENT_PROJECTS = "fldGU5CHbk"
@@ -166,7 +165,7 @@ E_WEEKLY_HOURS     = "fld558vxIV"   # agent-written: sum of Timesheet hours this
 E_MONTHLY_HOURS    = "fld31ku7RX"   # agent-written: sum of Timesheet hours this calendar month
 E_OVERLOADED       = "fldBUSPCvv"   # agent sets True if Weekly Hours > 40
 
-# Timesheet table — FF Employees Base (Step 1, added 2026-07-07)
+# Timesheet table — FF Employees Base
 TIMESHEET_TABLE = "tbl26FxJ1Gi0U0zR"
 TS_DATE         = "fldcow5K7g"     # Date (datetime yyyy-MM-dd)
 TS_PERSON       = "fld0kWWCIO"     # Person (link → Employees)
