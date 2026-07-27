@@ -99,77 +99,77 @@ def format_current_jobs(jobs: list[dict]) -> str:
 
 
 def run_employee_updates(
-    active_jobs: list[dict],
     roster: list[dict],
-    base,
     employees_client=None,
 ) -> None:
-    person_map = build_person_job_map(active_jobs, roster)
-    roster_lookup = {r["record_id"]: r for r in roster}
+    """Mirror Team Roster workload data → FF Employees base.
 
-    # Build Open ID → Employee record map for cross-base write
+    Called after run_load_sync() has already written accurate workload data
+    (from Lark Tasks) into Team Roster. This function reads those pre-computed
+    values and copies them to the Employees base — no independent calculation.
+
+    Matches Roster → Employee records via Lark Open ID (R_OPEN_ID / E_OPEN_ID).
+    """
+    if employees_client is None:
+        return
+
+    # Build Open ID → Employee record map
     emp_by_open_id: dict[str, dict] = {}
-    if employees_client is not None:
-        for emp in employees_client.get_employees():
-            oid = emp["fields"].get(config.E_OPEN_ID, "")
-            if isinstance(oid, list):
-                oid = oid[0] if oid else ""
-            if oid:
-                emp_by_open_id[str(oid)] = emp
+    for emp in employees_client.get_employees():
+        oid = emp["fields"].get(config.E_OPEN_ID, "")
+        if isinstance(oid, list):
+            oid = oid[0] if oid else ""
+        if oid:
+            emp_by_open_id[str(oid)] = emp
 
     from datetime import datetime
     import pytz
     now_wib = datetime.now(pytz.timezone(config.TIMEZONE)).strftime("%Y-%m-%d %H:%M:%S")
 
-    for rec_id, jobs in person_map.items():
-        person = roster_lookup.get(rec_id, {})
-        if not person:
+    updated = 0
+    for roster_rec in roster:
+        fields = roster_rec.get("fields", {})
+        open_id = fields.get(config.R_OPEN_ID, "")
+        if isinstance(open_id, list):
+            open_id = open_id[0] if open_id else ""
+        if not open_id:
             continue
-        fields = person.get("fields", {})
 
-        new_text = format_current_jobs(jobs)
-        current_text = fields.get(config.R_CURRENT_JOBS) or ""
-        if isinstance(current_text, list):
-            current_text = current_text[0].get("text", "") if current_text else ""
-        base.update_roster_record(rec_id, config.R_CURRENT_JOBS, new_text, current_value=current_text)
+        emp = emp_by_open_id.get(str(open_id))
+        if not emp:
+            continue
 
-        # ── Role-specific Load Score ─────────────────────────────────────
-        # Uses role_hours (from Role Bobot per job type × discipline),
-        # NOT total estimated hours. Capacity = 8h/day.
-        total_hours = round(sum(j["role_hours"] for j in jobs), 1)
-        current_load = fields.get(config.R_LOAD_SCORE)
+        # Read workload values already written by load_sync
+        current_jobs = fields.get(config.R_CURRENT_JOBS) or ""
+        if isinstance(current_jobs, list):
+            current_jobs = current_jobs[0].get("text", "") if current_jobs else ""
+
+        task_count = fields.get(config.R_TASK_COUNT) or 0
         try:
-            current_load = float(current_load) if current_load is not None else None
+            task_count = int(task_count)
         except (TypeError, ValueError):
-            current_load = None
-        if current_load != total_hours:
-            base.update_roster_record(rec_id, config.R_LOAD_SCORE, total_hours)
+            task_count = 0
 
-        if jobs:
-            dates = [j["next_date"] for j in jobs if j["next_date"]]
-            earliest = min(dates) if dates else None
-            current_deadline = fields.get(config.R_NEXT_DEADLINE) or ""
-            if isinstance(current_deadline, (int, float)):
-                current_deadline = ""
-            base.update_roster_record(rec_id, config.R_NEXT_DEADLINE, earliest, current_value=current_deadline)
+        load_score = fields.get(config.R_LOAD_SCORE) or 0.0
+        try:
+            load_score = float(load_score)
+        except (TypeError, ValueError):
+            load_score = 0.0
 
-        # ── Mirror to FF Employees base ───────────────────────────────────
-        if employees_client is not None:
-            open_id = fields.get(config.R_OPEN_ID, "")
-            if isinstance(open_id, list):
-                open_id = open_id[0] if open_id else ""
-            emp = emp_by_open_id.get(str(open_id)) if open_id else None
-            if emp:
-                emp_fields = emp.get("fields", {})
-                current_proj = emp_fields.get(config.E_CURRENT_PROJECTS) or ""
-                employees_client.update_employee(
-                    record_id=emp["record_id"],
-                    current_projects=new_text,
-                    active_jobs_count=len(jobs),
-                    load_score=total_hours,
-                    last_updated=now_wib,
-                    current_projects_val=current_proj,
-                )
+        emp_fields = emp.get("fields", {})
+        current_proj = emp_fields.get(config.E_CURRENT_PROJECTS) or ""
+
+        employees_client.update_employee(
+            record_id=emp["record_id"],
+            current_projects=current_jobs,
+            active_jobs_count=task_count,
+            load_score=load_score,
+            last_updated=now_wib,
+            current_projects_val=current_proj,
+        )
+        updated += 1
+
+    log.info(f"employee_sync: mirrored {updated} roster records → Employees")
 
 
 def handle_employee_update(job: dict, base, roster: list, **_) -> None:

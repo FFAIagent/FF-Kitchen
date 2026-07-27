@@ -13,6 +13,7 @@ from handlers.reminder import handle_deadline_reminders
 from handlers.presentation import handle_post_presentation
 from handlers.stage import handle_stage_advance
 from handlers.employee import run_employee_updates
+from handlers.load_sync import run_load_sync
 from handlers.hours import handle_hours_collection, handle_daily_hours_checkin
 import importlib.util as _ilu, os as _os
 _wl_spec = _ilu.spec_from_file_location(
@@ -48,10 +49,11 @@ def poll_job(poller: Poller) -> None:
     try:
         # Per-job handlers
         poller.run_once()
-        # Batch employee card update after all jobs processed
-        jobs = poller.base.list_active_jobs()
+        # Workload tracker: sync per-person load from Lark Tasks → Team Roster
+        run_load_sync(poller.base)
+        # Mirror Team Roster workload → FF Employees base
         roster = poller.base.get_roster()
-        run_employee_updates(jobs, roster, poller.base, poller.employees)
+        run_employee_updates(roster, poller.employees)
     except Exception as e:
         log.error(f"Poll failed: {e}", exc_info=True)
 
